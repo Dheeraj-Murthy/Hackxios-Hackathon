@@ -7,6 +7,7 @@ from bson.json_util import dumps
 from datetime import datetime
 
 from src.llm_agent import LLMReportAgent
+from src.schemas import ReportModel
 
 router = APIRouter()
 
@@ -18,16 +19,20 @@ async def get_report(report_id: str):
   return json.loads(dumps(report)) 
 
 
-
 @router.post("/LLMReport")
-async def upload_report(report :Dict[str,Any]):
+async def upload_report(report: ReportModel):
   mongo = await getMongo()
 
-  patient_id = report.get("patient_id")
-  report_id = report.get("report_id")
-  time = report.get("time") or datetime.utcnow().isoformat()
+  patient_id = report.model_dump().get("patient_id")
+  report_id = report.model_dump().get("report_id")
+  time = report.model_dump().get("time") or datetime.utcnow().isoformat()
   
-  user = await mongo.find_one("Users", {"_id": ObjectId(patient_id)})
+  user = None
+  if patient_id:
+    try:
+      user = await mongo.find_one("Users", {"_id": ObjectId(patient_id)})
+    except Exception:
+      user = None
 
   if user:
     favorites = user.get("Favorites") or []
@@ -36,16 +41,15 @@ async def upload_report(report :Dict[str,Any]):
     favorites = []
     biodata = {}
 
-
-  # function that returns input parsed
-  input = {}
+  
+  input_parsed = report.model_dump().get("Attributes")
   try:
     agent = LLMReportAgent()
     agent_input = {
       "report_id": report_id,
       "patient_id": patient_id,
       "time": time,
-      "input": input,
+      "input": input_parsed,
       "favorites": favorites,
       "biodata": biodata,
     }
@@ -57,15 +61,22 @@ async def upload_report(report :Dict[str,Any]):
   llm_doc = {
     "patient_id": patient_id,
     "report_id": report_id,
-    "time": time,
+    "time":datetime.utcnow.isoformat(),
     "output": analysis,
-    "created_at": datetime.utcnow().isoformat(),
+    "input" : input_parsed,
   }
 
   llm_inserted = await mongo.insert_one("LLMReports", llm_doc)
 
-  # analysis will have have suggested favorites if user selects one we will update user favorites
-  # and also adding llm report id to report document
+  # adding selected suggestion to user fav
+  
+
+  # adding llm report id to report document
+  try:
+    if report_id:
+      await mongo.update_one("Reports", {"_id": ObjectId(report_id)}, {"llm_report_id": llm_inserted})
+  except Exception:
+    pass
 
   return {"llm_report_id": llm_inserted, "analysis": analysis}
 
