@@ -1,2 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment
+venv/
 .env
-__pycache__
+
+# Firebase secrets
+firebase-admin.json
+*.json
+
+# OS / editor noise
+.DS_Store
+.vscode/
+.idea/
+
