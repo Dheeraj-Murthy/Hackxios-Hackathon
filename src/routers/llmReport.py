@@ -64,7 +64,8 @@ async def upload_report(report :Dict[str,Any]):
 
   llm_inserted = await mongo.insert_one("LLMReports", llm_doc)
 
-  # analysis will have have suggested favorites if user selects one we will update user favorites 
+  # analysis will have have suggested favorites if user selects one we will update user favorites
+  # and also adding llm report id to report document
 
   return {"llm_report_id": llm_inserted, "analysis": analysis}
 
