@@ -27,3 +27,10 @@ class LLMReportModel(BaseModel):
     output: Dict[str, Any]
     input : Dict[str,Any]
     model_config = ConfigDict(extra="allow")
+
+
+
+
+#Authentication
+class OnboardRequest(BaseModel):
+	role : str  #"individual" or "hospital"
