@@ -15,8 +15,9 @@ class ReportModel(BaseModel):
     patient_id: Optional[str]
     report_id: Optional[str] = None
     time: Optional[str] = None
-    Attibutes : Optional[str] = None
+    Attributes : Optional[str] = None
     llm_report_id : Optional[str] = None
+    selected_suggestions: Optional[List[str]] = None #New field which will be added further in favourites
     model_config = ConfigDict(extra="allow")
 
 

@@ -43,6 +43,9 @@ async def upload_report(report: ReportModel):
 
   
   input_parsed = report.model_dump().get("Attributes")
+  if not input_parsed:
+    return {"error": "Attributes missing"}
+  
   try:
     agent = LLMReportAgent()
     agent_input = {
@@ -68,8 +71,33 @@ async def upload_report(report: ReportModel):
 
   llm_inserted = await mongo.insert_one("LLMReports", llm_doc)
 
-  # adding selected suggestion to user fav
+  # adding selected suggestion(s) to user favorites
+  try:
+      selected_suggestions = (
+          report.model_dump().get("selected_suggestions")
+          or (
+              [report.model_dump().get("selected_suggestion")]
+              if report.model_dump().get("selected_suggestion")
+              else []
+          )
+      )
   
+      if patient_id and selected_suggestions:
+          await mongo.update_one(
+              "Users",
+              {"_id": ObjectId(patient_id)},
+              {
+                  "$addToSet": {
+                      "Favorites": {
+                          "$each": selected_suggestions
+                      }
+                  }
+              }
+          )
+  except Exception:
+      pass
+    
+
 
   # adding llm report id to report document
   try:

@@ -54,6 +54,13 @@ class LLMReportAgent:
         if favorites:
             parts.append("Favorites / preferences:\n" + json.dumps(favorites, default=str, indent=2))
 
+        if favorites:
+            parts.append(
+                "Guidelines based on user preferences:\n"
+                "   - Prefer recommendations aligned with Favorites\n"
+                "   - Avoid repeating items already in Favorites unless clinically critical\n"
+            )
+
         metrics = agent_input.get("input") or []
         parts.append("Parsed metrics (input):\n" + json.dumps(metrics, default=str, indent=2))
 
