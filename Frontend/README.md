@@ -1,5 +1,3 @@
-## Backend (Required for /me endpoint)
-
 ### Start Backend Server
 
 From the project root:
