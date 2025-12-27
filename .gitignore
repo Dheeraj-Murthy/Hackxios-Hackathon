@@ -1,3 +1,8 @@
+# Node
+node_modules/
+Frontend/node_modules/
+
+
 # Python
 __pycache__/
 *.pyc
@@ -8,7 +13,7 @@ venv/
 .env
 
 # Firebase secrets
-firebase-admin.json
+*.json
 
 
 # OS / editor noise

@@ -8,6 +8,8 @@ import Profile from './pages/Profile'
 import UploadReport from './pages/UploadReport'
 import PreviousReports from './pages/PreviousReports'
 import ChatButton from './components/ChatButton'
+import ProtectedRoute from "./auth/ProtectedRoute"
+
 
 export default function App() {
   return (
@@ -29,8 +31,8 @@ export default function App() {
           <a href="#" className="logout-btn"><LogOut size={14} /> Logout</a>
         </div>
       </aside>
-
       <main className="app-main">
+        
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/login" element={<Login />} />
