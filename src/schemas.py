@@ -48,6 +48,7 @@ class Report(BaseModel):
     Processed_at: datetime = Field(default_factory=datetime.utcnow)
     Attributes: Dict[str, MetricData] = Field(..., description="Medical test results")
     llm_output: Optional[str] = Field(None, description="LLM-generated health assessment")
+    llm_report_id: Optional[str] = Field(None, description="Reference to LLM analysis report")
 
     class Config:
         populate_by_name = True
