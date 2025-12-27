@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: Optional[str] = None
     GEMINI_MODEL: str = "gemini-2.5-flash"
     GEMINI_TEMPERATURE: float = 0.0
+
+    # Firebase settings
+    FIREBASE_ADMIN_KEY: Optional[str] = None
     
     class Config:
         env_file = ".env"
