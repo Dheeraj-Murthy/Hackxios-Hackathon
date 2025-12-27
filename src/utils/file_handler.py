@@ -200,15 +200,50 @@ class FileHandler:
                 & ~df["name"].astype(str).str.contains(r"[a-z]", regex=True, na=False)
             ]
             
+            # Function to split value_and_remark into separate value and remark
+            def split_value_and_remark(value_remark_str):
+                if pd.isna(value_remark_str) or str(value_remark_str).strip() == "":
+                    return "", None
+                
+                value_remark_str = str(value_remark_str).strip()
+                
+                # Pattern to match: number + optional decimal + optional unit + optional remark in parentheses
+                # Examples: "110 mg/dL", "12.5 g/dL", "120/80 mmHg", "Normal", "High (above normal)"
+                pattern = r'^(\d+\.?\d*\s*[a-zA-Z/]*(?:\s*\([^)]*\))?\s*(.*)$)'
+                match = re.match(pattern, value_remark_str)
+                
+                if match:
+                    # Extract the main value part (number + unit + any parenthetical remark)
+                    value_part = match.group(1).strip()
+                    remark_part = match.group(2).strip() if match.group(2) else None
+                    
+                    # Clean up the value part - remove trailing parentheses if they're empty
+                    value_part = re.sub(r'\s*$', '', value_part)
+                    value_part = re.sub(r'\s*\(\s*\)\s*$', '', value_part)
+                    
+                    return value_part, remark_part if remark_part and remark_part.strip() else None
+                else:
+                    # If pattern doesn't match, treat whole string as value
+                    return value_remark_str, None
+            
             # Create structured data with all 4 columns
             structured_data = []
             for row in df.itertuples(index=False):
                 # Handle NaN values by converting None to string
+                name = str(row.name) if pd.notna(row.name) else ""
+                value_and_remark = str(row.value_and_remark) if pd.notna(row.value_and_remark) else ""
+                range_str = str(row.range) if pd.notna(row.range) else ""
+                unit = str(row.unit) if pd.notna(row.unit) else ""
+                
+                # Split value_and_remark into separate value and remark
+                value, remark = split_value_and_remark(row.value_and_remark)
+                
                 structured_data.append({
-                    "name": str(row.name) if pd.notna(row.name) else "",
-                    "value_and_remark": str(row.value_and_remark) if pd.notna(row.value_and_remark) else "",
-                    "range": str(row.range) if pd.notna(row.range) else "",
-                    "unit": str(row.unit) if pd.notna(row.unit) else ""
+                    "name": name,
+                    "value": value,
+                    "remark": remark,
+                    "range": range_str,
+                    "unit": unit
                 })
             
             # Save processed file (for debugging)

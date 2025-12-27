@@ -34,7 +34,8 @@ class LLMReportModel(BaseModel):
 
 class MetricData(BaseModel):
     name: Optional[str] = None
-    value_and_remark: Optional[str] = None
+    value: Optional[str] = None
+    remark: Optional[str] = None
     range: Optional[str] = None
     unit: Optional[str] = None
     verdict: Optional[str] = None  # To be filled later

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Form
 from fastapi.responses import JSONResponse
 from typing import List, Optional
 import os
@@ -36,10 +36,15 @@ async def test_db():
 
 
 @router.post("/reports/upload")
-async def upload_report(file: UploadFile = File(...), patient_id: Optional[str] = None):
+async def upload_report(
+    file: UploadFile = File(...), 
+    patient_id: Optional[str] = Form(None), 
+    report_id: Optional[str] = Form(None)
+):
     """
     Upload and process a medical report PDF
     """
+    
     file_path = None
     csv_file_path = None
     
@@ -68,12 +73,13 @@ async def upload_report(file: UploadFile = File(...), patient_id: Optional[str] 
             key = f"test_{i}"
             parsed_attributes[key] = test
         
-        # Generate patient ID if not provided
-        if not patient_id:
+        # Generate patient ID if not provided or empty
+        if not patient_id or patient_id.strip() == "":
             patient_id = f"patient_{file_id[:8]}"
         
-        # Create report
-        report_id = f"report_{file_id[:8]}"
+        # Generate report ID if not provided or empty
+        if not report_id or report_id.strip() == "":
+            report_id = f"report_{file_id[:8]}"
         
         report_data = {
             "Report_id": report_id,

@@ -1,2 +1,6 @@
 .env
 __pycache__
+uploads/*
+*.log
+mathew_test.pdf
+
