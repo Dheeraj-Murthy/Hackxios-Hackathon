@@ -1,10 +1,20 @@
+from enum import Enum
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, ConfigDict, Field
 from datetime import datetime
 from bson import ObjectId
 
+class UserType(str, Enum):
+    PATIENT = "patient"
+    INSTITUTION = "institution"
 
 class UserModel(BaseModel):
+    uid: str = Field(..., min_length=1)
+    user_type: UserType
+
+
+class PatientModel(BaseModel):
+    patient_id: str= Field(..., min_length=1)
     name: Optional[str] = None
     Access : List[str] = []
     Favorites: List[str] = []
@@ -14,7 +24,7 @@ class UserModel(BaseModel):
 
 
 class ReportModel(BaseModel):
-    patient_id: Optional[str]
+    patient_id: Optional[str]= Field(..., min_length=1)
     report_id: Optional[str] = None
     time: Optional[str] = None
     Attributes : Optional[Dict[str, Any]] = None
@@ -24,8 +34,8 @@ class ReportModel(BaseModel):
 
 
 class LLMReportModel(BaseModel):
-    patient_id: Optional[str]
-    report_id: Optional[str]
+    patient_id: Optional[str]= Field(..., min_length=1)
+    report_id: Optional[str]= Field(..., min_length=1)
     time: Optional[str] = None
     output: Dict[str, Any]
     input : Dict[str,Any]
@@ -68,4 +78,4 @@ class ReportUpdate(BaseModel):
 
 #Authentication
 class OnboardRequest(BaseModel):
-	role : str  #"individual" or "hospital"
+	role : UserType  #"individual" or "hospital"

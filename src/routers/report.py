@@ -46,6 +46,7 @@ async def _upload_and_parse_report(
     """Internal function to handle file upload and parsing"""
     file_path = None
     csv_file_path = None
+    processed_csv_path = None
     
     try:
         # Save uploaded file
@@ -73,6 +74,7 @@ async def _upload_and_parse_report(
         
         # Get CSV structured data
         csv_data = csv_parsing_result.get("data", [])
+        processed_csv_path = csv_parsing_result.get("processed_file")
         
         # Create attributes dictionary with CSV data (all 4 columns)
         parsed_attributes = {}
@@ -111,6 +113,20 @@ async def _upload_and_parse_report(
             file_handler.delete_file(file_path)
         if csv_file_path and os.path.exists(csv_file_path):
             os.remove(csv_file_path)
+        if processed_csv_path and os.path.exists(processed_csv_path):
+            os.remove(processed_csv_path)
+        
+        # Additional cleanup: remove any processed CSV files that might be left behind
+        # Use pattern matching to clean up any _processed.csv files related to this file_id
+        if 'file_id' in locals():
+            import glob
+            processed_pattern = os.path.join(os.path.dirname(csv_file_path or ""), f"{file_id}_*_processed.csv")
+            for processed_file in glob.glob(processed_pattern):
+                try:
+                    os.remove(processed_file)
+                    print(f"Cleaned up extra processed file: {processed_file}")
+                except Exception as e:
+                    print(f"Failed to clean up {processed_file}: {e}")
 
 async def _analyze_report_data(
     patient_id: str, 
@@ -183,6 +199,7 @@ async def upload_report(
     
     file_path = None
     csv_file_path = None
+    processed_csv_path = None
     
     try:
         # Save uploaded file
@@ -201,6 +218,7 @@ async def upload_report(
             raise HTTPException(status_code=400, detail="CSV parsing failed")
         
         # Get CSV structured data
+        processed_csv_path = csv_parsing_result.get("processed_file")
         csv_data = csv_parsing_result.get("data", [])
         
         # Create attributes dictionary with CSV data (all 4 columns)
@@ -221,7 +239,7 @@ async def upload_report(
             "Report_id": report_id,
             "Patient_id": patient_id,
             "Attributes": parsed_attributes,
-            "Processed_at": None  # Will be set by MongoDB
+            "Processed_at": datetime.utcnow().isoformat()
         }
         
         # Save to database
@@ -235,6 +253,8 @@ async def upload_report(
         file_handler.delete_file(file_path)
         if csv_file_path and os.path.exists(csv_file_path):
             os.remove(csv_file_path)
+        if processed_csv_path and os.path.exists(processed_csv_path):
+            os.remove(processed_csv_path)
         
         return {
             "message": "Report uploaded and processed successfully",
@@ -250,6 +270,8 @@ async def upload_report(
             file_handler.delete_file(file_path)
         if 'csv_file_path' in locals() and csv_file_path and os.path.exists(csv_file_path):
             os.remove(csv_file_path)
+        if 'processed_csv_path' in locals() and processed_csv_path and os.path.exists(processed_csv_path):
+            os.remove(processed_csv_path)
         raise
     except Exception as e:
         # Clean up file on general errors
@@ -257,6 +279,8 @@ async def upload_report(
             file_handler.delete_file(file_path)
         if 'csv_file_path' in locals() and csv_file_path and os.path.exists(csv_file_path):
             os.remove(csv_file_path)
+        if 'processed_csv_path' in locals() and processed_csv_path and os.path.exists(processed_csv_path):
+            os.remove(processed_csv_path)
         raise HTTPException(status_code=500, detail=f"Error processing report: {str(e)}")
 
 
@@ -322,10 +346,14 @@ async def upload_and_analyze(
         # Clean up file on HTTP errors
         if 'file_path' in locals() and file_path is not None:
             file_handler.delete_file(file_path)
+        if 'processed_csv_path' in locals() and processed_csv_path and os.path.exists(processed_csv_path):
+            os.remove(processed_csv_path)
         if 'csv_file_path' in locals() and csv_file_path and os.path.exists(csv_file_path):
             os.remove(csv_file_path)
         raise
     except Exception as e:
+        if 'processed_csv_path' in locals() and processed_csv_path and os.path.exists(processed_csv_path):
+            os.remove(processed_csv_path)
         # Clean up file on general errors
         if 'file_path' in locals() and file_path is not None:
             file_handler.delete_file(file_path)

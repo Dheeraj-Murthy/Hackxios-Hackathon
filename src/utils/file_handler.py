@@ -207,22 +207,24 @@ class FileHandler:
                 
                 value_remark_str = str(value_remark_str).strip()
                 
-                # Pattern to match: number + optional decimal + optional unit + optional remark in parentheses
-                # Examples: "110 mg/dL", "12.5 g/dL", "120/80 mmHg", "Normal", "High (above normal)"
-                pattern = r'^(\d+\.?\d*\s*[a-zA-Z/]*(?:\s*\([^)]*\))?\s*(.*)$)'
+                # Pattern to match: number + optional decimal + optional unit + optional remark
+                # Examples: "110 mg/dL", "12.5 g/dL", "82", "126", "41 High"
+                pattern = r'^(\d+\.?\d*\s*[a-zA-Z/]*)(?:\s+(.+?)$)'
                 match = re.match(pattern, value_remark_str)
                 
                 if match:
-                    # Extract the main value part (number + unit + any parenthetical remark)
                     value_part = match.group(1).strip()
                     remark_part = match.group(2).strip() if match.group(2) else None
                     
-                    # Clean up the value part - remove trailing parentheses if they're empty
-                    value_part = re.sub(r'\s*$', '', value_part)
-                    value_part = re.sub(r'\s*\(\s*\)\s*$', '', value_part)
+                    # If remark is in parentheses, extract content
+                    if remark_part and remark_part.startswith('(') and remark_part.endswith(')'):
+                        remark_part = remark_part[1:-1].strip()
                     
                     return value_part, remark_part if remark_part and remark_part.strip() else None
                 else:
+                    # Handle pure numbers without units - treat as value
+                    if re.match(r'^\d+\.?\d*$', value_remark_str):
+                        return value_remark_str, None
                     # If pattern doesn't match, treat whole string as value
                     return value_remark_str, None
             
@@ -247,12 +249,13 @@ class FileHandler:
                 })
             
             # Save processed file (for debugging)
-            output_file = input_file_name.replace('.csv', '_processed.csv')
-            df.to_csv(output_file, header=True, index=False)
+            processed_file = input_file_name.replace('.csv', '_processed.csv')
+            df.to_csv(processed_file, header=True, index=False)
             
             return {
                 "success": True, 
                 "input": input_file_name,
+                "processed_file": processed_file,
                 "data": structured_data
             }
         except Exception as e:
