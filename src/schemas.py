@@ -17,6 +17,7 @@ class ReportModel(BaseModel):
     time: Optional[str] = None
     Attibutes : Optional[str] = None
     llm_report_id : Optional[str] = None
+    selected_concerns: Optional[List[str]] = None #New field which will be added further in favourites
     model_config = ConfigDict(extra="allow")
 
 
