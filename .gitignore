@@ -9,7 +9,7 @@ venv/
 
 # Firebase secrets
 firebase-admin.json
-*.json
+
 
 # OS / editor noise
 .DS_Store
