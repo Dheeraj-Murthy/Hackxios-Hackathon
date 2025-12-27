@@ -1,0 +1,14 @@
+INFO:     Started server process [16086]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+ERROR:    [Errno 48] error while attempting to bind on address ('127.0.0.1', 8001): [errno 48] address already in use
+INFO:     Waiting for application shutdown.
+/Users/dheerajmurthy/Dev/Hackxios-Hackathon/unified_backend/app/db/database.py:133: RuntimeWarning: coroutine 'AsyncMongoClient.close' was never awaited
+  mongo_wrapper.client.close()
+RuntimeWarning: Enable tracemalloc to get the object allocation traceback
+INFO:     Application shutdown complete.
+Warning: google-generativeai not installed. LLM functionality will be disabled.
+MongoDB connection failed: localhost:27017: [Errno 61] Connect call failed ('127.0.0.1', 27017) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms), Timeout: 30s, Topology Description: <TopologyDescription id: 694fb96090448d8bc44f9ede, topology_type: Unknown, servers: [<ServerDescription ('localhost', 27017) server_type: Unknown, rtt: None, error=AutoReconnect("localhost:27017: [Errno 61] Connect call failed ('127.0.0.1', 27017) (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms)")>]>
+MongoDB connection failed: localhost:27017: [Errno 61] Connection refused (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms), Timeout: 30s, Topology Description: <TopologyDescription id: 694fb96090448d8bc44f9edd, topology_type: Unknown, servers: [<ServerDescription ('localhost', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('localhost:27017: [Errno 61] Connection refused (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms)')>]>
+MongoDB connection closed
+MongoDB wrapper connection closed

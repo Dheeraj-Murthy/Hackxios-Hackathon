@@ -9,7 +9,7 @@ from datetime import datetime
 from src.llm_agent import LLMReportAgent
 from src.schemas import ReportModel
 
-router = APIRouter()
+router = APIRouter(prefix="/api")
 
 
 @router.get("/LLMReport/{report_id}")
@@ -30,7 +30,7 @@ async def upload_report(report: ReportModel):
   has_attributes = bool(payload.get("Attributes"))
   
   report_id = payload.get("report_id")
-  time = payload.get("time") or datetime.utcnow.isoformat()
+  time = payload.get("time") or datetime.utcnow().isoformat()
 
   
   # CASE 1: User is only selecting concern options (no LLM generation)
@@ -95,7 +95,7 @@ async def upload_report(report: ReportModel):
   llm_doc = {
     "patient_id": patient_id,
     "report_id": report_id,
-    "time":datetime.utcnow.isoformat(),
+    "time":datetime.utcnow().isoformat(),
     "output": analysis,
     "input" : input_parsed,
   }

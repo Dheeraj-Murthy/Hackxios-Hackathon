@@ -3,9 +3,10 @@ from bson import ObjectId
 from src.db.mongoWrapper import getMongo
 from bson.json_util import dumps
 from src.routers import report,llmReport,user
+from src.core.config import settings
 import json
 
-app = FastAPI()
+app = FastAPI(title=settings.APP_NAME, version=settings.VERSION)
 app.include_router(report.router)
 app.include_router(llmReport.router)
 app.include_router(user.router)

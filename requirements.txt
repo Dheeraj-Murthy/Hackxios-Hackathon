@@ -1,17 +1,46 @@
-annotated-doc==0.0.4
-annotated-types==0.7.0
+# FastAPI and Core Dependencies
+fastapi==0.127.0
+starlette==0.50.0
+uvicorn==0.40.0
+h11==0.16.0
+pydantic==2.12.5
+pydantic_core==2.41.5
+python-dotenv==1.2.1
+typing_extensions==4.15.0
+
+# MongoDB Dependencies
+pymongo==4.15.5
+motor==3.7.1
+
+# PDF Processing Dependencies
+camelot-py==1.0.9
+pypdf==5.9.0
+pdfminer.six==20251107
+opencv-python-headless==4.12.0.88
+pypdfium2==5.2.0
+
+# Data Processing Dependencies
+pandas==2.3.3
+numpy==2.2.6
+
+# Additional ML/Data Science Dependencies
+scikit-learn==1.7.2
+scipy==1.16.2
+matplotlib==3.10.7
+plotly==6.3.1
+
+# File Processing Dependencies
+openpyxl==3.1.5
+
+# HTTP Client Dependencies
+requests==2.32.3
+httpx==0.28.1
+
+# Utilities
 anyio==4.12.0
 click==8.3.1
 dnspython==2.8.0
-fastapi==0.127.0
-h11==0.16.0
-idna==3.11
-pydantic==2.12.5
-pydantic_core==2.41.5
-pymongo==4.15.5
-python-dotenv==1.2.1
-starlette==0.50.0
 typing-inspection==0.4.2
-typing_extensions==4.15.0
-uvicorn==0.40.0
+
+# Optional: AI/LLM Integration
 google-generativeai
