@@ -13,15 +13,16 @@ class UserModel(BaseModel):
     user_type: UserType
 
 
-class PatientModel(BaseModel):
-    patient_id: str= Field(..., min_length=1)
+class PatientModel(UserModel):
     name: Optional[str] = None
-    Access : List[str] = []
     Favorites: List[str] = []
     BioData: Dict[str, Any] = {}
     Reports : List[str] = []
     model_config = ConfigDict(extra="allow")
 
+class InstitutionModel(UserModel):
+    patient_list: List[str] = []
+    model_config = ConfigDict(extra="allow")
 
 class ReportModel(BaseModel):
     patient_id: Optional[str]= Field(..., min_length=1)
