@@ -31,7 +31,6 @@ class LLMReportModel(BaseModel):
     input : Dict[str,Any]
     model_config = ConfigDict(extra="allow")
 
-
 class MetricData(BaseModel):
     name: Optional[str] = None
     value: Optional[str] = None
@@ -65,3 +64,8 @@ class ReportUpdate(BaseModel):
     Patient_id: Optional[str] = None
     Attributes: Optional[Dict[str, MetricData]] = None
     llm_output: Optional[str] = None
+
+
+#Authentication
+class OnboardRequest(BaseModel):
+	role : str  #"individual" or "hospital"
