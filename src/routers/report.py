@@ -82,11 +82,15 @@ async def _upload_and_parse_report(
             key = f"test_{i}"
             parsed_attributes[key] = test
         
+        # Get current timestamp for processing time
+        from datetime import datetime, UTC
+        current_time = datetime.now(UTC).isoformat()
+        
         report_data = {
             "Report_id": report_id,
             "Patient_id": patient_id,
             "Attributes": parsed_attributes,
-            "Processed_at": None  # Will be set by MongoDB
+            "Processed_at": current_time
         }
         
         # Save to database
@@ -449,6 +453,66 @@ async def update_report(report_id: str, report_update: dict):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error updating report: {str(e)}")
+
+@router.get("/draw_graph/{patient_id}/{attribute}")
+async def draw_graph_data(patient_id: str, attribute: str):
+    """
+    Extract specific attribute values from all patient reports for graphing
+    """
+    try:
+        mongo = await getMongo()
+        if mongo is None:
+            raise HTTPException(status_code=500, detail="Database not connected")
+
+        # Fetch reports
+        patient_reports = await mongo.find_many(
+            "Reports",
+            {"Patient_id": patient_id},
+            limit=100
+        )
+
+        values = []
+
+        for report in patient_reports:
+            attributes = report.get("Attributes", [])
+            timestamp = report.get("Processed_at")
+
+            for test  in attributes:
+                test_dict = attributes[test]
+                if test_dict.get("name") == attribute:
+                    
+                    raw_value = test_dict.get("value")
+                    remark = test_dict.get("remark")
+
+                    # Try to extract number (optional)
+                    value = raw_value
+                    try:
+                        value = float(str(raw_value).split()[0])
+                    except Exception:
+                        pass
+
+                    values.append({
+                        "value": value,
+                        "timestamp": timestamp,
+                        "remark": remark
+                    })
+                    break
+
+        return {
+            "patient_id": patient_id,
+            "attribute": attribute,
+            "data_points": len(values),
+            "values": values,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error extracting graph data: {str(e)}"
+        )
+
 
 
 @router.delete("/reports/{report_id}")
