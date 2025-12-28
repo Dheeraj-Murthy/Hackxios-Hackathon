@@ -13,6 +13,9 @@ export default function Dashboard() {
 
   const { user, loading } = useAuth()
   const [userData, setUserData] = useState(null)
+  const [actionableSuggestions, setActionableSuggestions] = useState([])
+  const [loadingSuggestions, setLoadingSuggestions] = useState(true)
+
 
   useEffect(() => {
     if (!user) return
@@ -38,6 +41,33 @@ export default function Dashboard() {
     }
 
     fetchUser()
+
+    const fetchActionableSuggestions = async () => {
+    try {
+      const token = await user.getIdToken()
+
+      const res = await fetch(
+        "http://localhost:8000/dashboard/actionable-suggestions",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+
+      if (!res.ok) throw new Error("Failed to fetch actionable suggestions")
+
+      const data = await res.json()
+      setActionableSuggestions(data.actionable_suggestions || [])
+
+    } catch (err) {
+      console.error("Failed to load actionable suggestions:", err)
+    } finally {
+      setLoadingSuggestions(false)
+    }
+  }
+
+  fetchActionableSuggestions()
   }, [user])
 
   if (loading) {
@@ -79,13 +109,19 @@ export default function Dashboard() {
       <div className="grid">
         <div className="card">
           <h3>Actionable Suggestions</h3>
-          <ul style={{ marginTop: 12 }}>
-            <li>Get 15–30 minutes of sunlight exposure daily.</li>
-            <li>Exercise regularly, at least 3 times per week.</li>
-            <li>Consider vitamin D supplement after consulting GP.</li>
-            <li>Limit refined carbohydrates and added sugars.</li>
-          </ul>
+          {loadingSuggestions ? (
+            <p className="small-muted">Generating personalized suggestions...</p>
+          ) : actionableSuggestions.length === 0 ? (
+            <p className="small-muted">No suggestions available yet.</p>
+          ) : (
+            <ul style={{ marginTop: 12 }}>
+              {actionableSuggestions.map((s, idx) => (
+                <li key={idx}>{s}</li>
+              ))}
+            </ul>
+          )}
         </div>
+
 
         <div className="card">
           <h3>Detailed Analysis</h3>

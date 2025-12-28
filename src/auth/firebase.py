@@ -2,6 +2,8 @@ import os
 import firebase_admin
 from firebase_admin import credentials, auth
 from fastapi import HTTPException, status
+from dotenv import load_dotenv
+load_dotenv()
 
 FIREBASE_KEY_PATH = os.environ.get("FIREBASE_ADMIN_KEY")
 

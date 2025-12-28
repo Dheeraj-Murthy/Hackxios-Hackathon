@@ -174,6 +174,30 @@ class LLMReportAgent:
         final_output["concern_options"] = concern_options
         return final_output
 
+    async def generate_actionable_suggestions(self, meta_input: dict):
+        prompt = f"""
+        You are a health AI assistant.
+
+        You are given {meta_input.get("report_count")} recent medical reports
+        with their AI analyses.
+
+        Your tasks:
+            - If only 1 report is available, base suggestions primarily on it
+            - If multiple reports exist, detect trends
+            - If more than 1 report, prioritize the most recent
+            - Generate 4-6 actionable suggestions
+            - Keep them concise and practical
+            - Avoid repetition
+
+        Data:
+        {meta_input}
+
+        Return JSON:
+        {{"actionable_suggestions": [string]}}
+        """
+        response = self.model.generate_content(prompt)
+        return self._safe_parse(response)
+
 
 if __name__ == "__main__":
     print("This module provides LLMReportAgent for use by FastAPI routers. Run the API server instead of this file.")
