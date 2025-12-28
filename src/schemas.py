@@ -9,8 +9,9 @@ class UserType(str, Enum):
     INSTITUTION = "institution"
 
 class UserModel(BaseModel):
-    uid: str = Field(..., min_length=1)
-    user_type: UserType
+    uid: Optional[str] = None
+    user_type: Optional[UserType] = None
+
 
 
 class PatientModel(UserModel):

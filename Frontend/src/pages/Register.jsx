@@ -1,21 +1,86 @@
 import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth"
 import { auth } from "../firebase/firebase"
-import { sendPasswordResetEmail } from "firebase/auth"
 
-
+const BACKEND_URL = "http://localhost:8000"
 
 const Register = () => {
+  const navigate = useNavigate()
+
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
+  const handleRegister = async () => {
+    setError("")
+
+    if (!email || !password || !confirmPassword) {
+      setError("All fields are required")
+      return
+    }
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match")
+      return
+    }
+
+    try {
+      setLoading(true)
+
+      // 1. Firebase signup
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      )
+
+      // 2. Get ID token and uid
+      const token = await userCredential.user.getIdToken()
+
+      // 3. Backend onboarding
+      const res = await fetch("http://127.0.0.1:8000/user", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: "",
+          Favorites: [],
+          Reports: [],
+          BioData: {}
+        })
+      })
+
+      if (!res.ok) {
+        const err = await res.text()
+        throw new Error(err)
+      }
+
+      const data = await res.json()
+
+      // 4. Store patient_id
+      localStorage.setItem("patient_id", data._id)
+
+      // 5. Redirect
+      navigate("/dashboard")
+
+    } catch (err) {
+      console.error(err)
+      setError(err.message || "Registration failed")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+
   return (
     <div style={{ padding: 28 }}>
       <div className="card login-split">
+
         {/* LEFT SIDE */}
         <div className="login-left">
           <img src="/src/assets/illustration.png" alt="illustration" />
@@ -71,45 +136,7 @@ const Register = () => {
                 className="btn-primary"
                 style={{ flex: 1 }}
                 disabled={loading}
-                onClick={async () => {
-                  setError("")
-
-                  if (!email || !password || !confirmPassword) {
-                    setError("All fields are required")
-                    return
-                  }
-
-                  if (password.length < 6) {
-                    setError("Password must be at least 6 characters")
-                    return
-                  }
-
-                  if (password !== confirmPassword) {
-                    setError("Passwords do not match")
-                    return
-                  }
-
-                  // Firebase logic 
-                  try {
-                    setLoading(true)
-                    const userCredential = await createUserWithEmailAndPassword(
-                      auth,
-                      email,
-                      password
-                    )
-                    await sendEmailVerification(userCredential.user, {
-                      url: "http://localhost:5173/login",
-                      handleCodeInApp: false,
-                    })
-                    alert("Account created. PLease verify your email.")
-
-                    //navigation will add when backend integrated
-                  } catch (err) {
-                    setError(err.message)
-                  } finally {
-                    setLoading(false)
-                  }
-                }}
+                onClick={handleRegister}
               >
                 {loading ? "Creating account..." : "Register"}
               </button>
@@ -120,6 +147,7 @@ const Register = () => {
                 Already have an account? <Link to="/login">Login</Link>
               </small>
             </div>
+
           </div>
         </div>
       </div>
