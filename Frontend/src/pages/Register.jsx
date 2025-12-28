@@ -1,16 +1,17 @@
-import React, { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import React, { useState } from "react"
+import { Link, useNavigate } from "react-router-dom"
 import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth"
 import { auth } from "../firebase/firebase"
 
-const BACKEND_URL = "http://localhost:8000"
+const BACKEND_URL = "http://127.0.0.1:8000"
 
-const Register = () => {
+export default function Register() {
   const navigate = useNavigate()
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
+  const [role, setRole] = useState("patient") // patient | institution
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
@@ -30,44 +31,52 @@ const Register = () => {
     try {
       setLoading(true)
 
-      // 1. Firebase signup
+      // 1. Firebase signup (auto-login)
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         email,
         password
       )
 
-      // 2. Get ID token and uid
-      const token = await userCredential.user.getIdToken()
+      const user = userCredential.user
+      const token = await user.getIdToken()
 
-      // 3. Backend onboarding
-      const res = await fetch("http://127.0.0.1:8000/user", {
+      // 2. Send verification email (non-blocking)
+      sendEmailVerification(user, {
+        url: "http://localhost:5173/profile",
+        handleCodeInApp: false,
+      }).catch(() => { })
+
+      // 3. Create user in backend
+      const res = await fetch(`${BACKEND_URL}/user`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
+          user_type: role,
           name: "",
           Favorites: [],
           Reports: [],
-          BioData: {}
-        })
+          BioData: {},
+        }),
       })
 
       if (!res.ok) {
-        const err = await res.text()
-        throw new Error(err)
+        const errText = await res.text()
+        throw new Error(errText)
       }
 
       const data = await res.json()
+      localStorage.setItem("user_id", data._id)
 
-      // 4. Store patient_id
-      localStorage.setItem("patient_id", data._id)
-
-      // 5. Redirect
-      navigate("/dashboard")
-
+      // 4. Redirect by role
+      if (role === "institution") {
+        navigate("/hospital")
+      } else {
+        navigate("/dashboard")
+      }
     } catch (err) {
       console.error(err)
       setError(err.message || "Registration failed")
@@ -76,26 +85,37 @@ const Register = () => {
     }
   }
 
-
   return (
     <div style={{ padding: 28 }}>
       <div className="card login-split">
 
-        {/* LEFT SIDE */}
+        {/* LEFT */}
         <div className="login-left">
           <img src="/src/assets/illustration.png" alt="illustration" />
         </div>
 
-        {/* RIGHT SIDE */}
+        {/* RIGHT */}
         <div className="login-right">
           <div className="login-card">
-            <h2 style={{ marginTop: 0 }}>Create Account</h2>
+            <h2>Create Account</h2>
 
-            {error && (
-              <div className="error-box">
-                {error}
-              </div>
-            )}
+            {error && <div className="error-box">{error}</div>}
+
+            {/* ROLE TOGGLE */}
+            <div className="toggle-role">
+              <button
+                className={role === "patient" ? "active" : ""}
+                onClick={() => setRole("patient")}
+              >
+                Patient
+              </button>
+              <button
+                className={role === "institution" ? "active" : ""}
+                onClick={() => setRole("institution")}
+              >
+                Hospital
+              </button>
+            </div>
 
             <div className="form-row">
               <label>Email</label>
@@ -138,21 +158,18 @@ const Register = () => {
                 disabled={loading}
                 onClick={handleRegister}
               >
+
                 {loading ? "Creating account..." : "Register"}
               </button>
             </div>
-
-            <div style={{ marginTop: 12, textAlign: 'center' }}>
+            <div style={{ marginTop: 12, textAlign: "center" }}>
               <small className="small-muted">
                 Already have an account? <Link to="/login">Login</Link>
               </small>
             </div>
-
           </div>
         </div>
       </div>
     </div>
   )
 }
-
-export default Register

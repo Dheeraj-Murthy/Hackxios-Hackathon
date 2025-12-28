@@ -1,16 +1,17 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from src.db.mongoWrapper import getMongo
 from bson import ObjectId
 from bson.json_util import dumps
 import json
 
 from src.auth.dependencies import get_current_user
-from src.schemas import PatientModel, OnboardRequest
+from src.schemas import OnboardRequest
 
 router = APIRouter()
 
-@router.get("/user/me")
-async def get_me(current_user = Depends(get_current_user)):
+# CURRENT USER
+@router.get("/me")
+async def read_me(current_user=Depends(get_current_user)):
     mongo = await getMongo()
 
     user = await mongo.find_one(
@@ -18,12 +19,85 @@ async def get_me(current_user = Depends(get_current_user)):
         {"uid": current_user["uid"]}
     )
 
-    if not user:
-        return {}
+    return {
+        "uid": current_user["uid"],
+        "email": current_user["email"],
+        "role": user.get("user_type") if user else None
+    }
 
-    return json.loads(dumps(user))
+
+# CREATE USER (PATIENT / INSTITUTION)
+@router.post("/user")
+async def upload_user(
+    data: dict,
+    current_user=Depends(get_current_user)
+):
+    mongo = await getMongo()
+
+    user_type = data.get("user_type")
+    if user_type not in ["patient", "institution"]:
+        raise HTTPException(status_code=400, detail="Invalid user_type")
+
+    existing = await mongo.find_one("Users", {"uid": current_user["uid"]})
+    if existing:
+        return {
+            "_id": str(existing["_id"]),
+            "user_type": existing["user_type"]
+        }
+
+    user_doc = {
+        "uid": current_user["uid"],
+        "email": current_user["email"],
+        "user_type": user_type,
+    }
+
+    if user_type == "patient":
+        user_doc.update({
+            "name": "",
+            "BioData": {},
+            "Favorites": [],
+            "Reports": [],
+        })
+
+    if user_type == "institution":
+        user_doc.update({
+            "institution_name": "",
+        })
+
+    inserted_id = await mongo.insert_one("Users", user_doc)
+
+    return {
+        "_id": str(inserted_id),
+        "user_type": user_type
+    }
 
 
+# UPDATE PATIENT PROFILE
+@router.patch("/user/me")
+async def update_me(
+    data: dict,
+    current_user=Depends(get_current_user)
+):
+    mongo = await getMongo()
+
+    update_doc = {}
+
+    if "name" in data:
+        update_doc["name"] = data.pop("name")
+
+    if data:
+        update_doc["BioData"] = data
+
+    await mongo.update_one(
+        "Users",
+        {"uid": current_user["uid"]},
+        update_doc
+    )
+
+    return {"status": "updated"}
+
+
+# GET USER BY ID
 @router.get("/user/{user_id}")
 async def get_user(user_id: str):
     mongo = await getMongo()
@@ -31,66 +105,46 @@ async def get_user(user_id: str):
     return json.loads(dumps(user))
 
 
-@router.post("/user")
-async def upload_user(
-    user: PatientModel,
-    current_user = Depends(get_current_user)
-):
-    mongo = await getMongo()
-    user_dict = user.model_dump()
-    user_dict["uid"] = current_user["uid"]
-    user_dict["user_type"] = "patient"
-    inserted_id = await mongo.insert_one("Users", user_dict)
-    return { "_id": str(inserted_id) }
-
-
-@router.get("/me")
-def read_me(current_user = Depends(get_current_user)):
-    return {
-        "uid": current_user["uid"],
-        "email": current_user["email"],
-        "role": None  # frontend decides
-    }
-
-
-@router.post("/user/onboard")
-async def onboard_user(
-    data: OnboardRequest,
-    current_user = Depends(get_current_user)
-):
-    return {
-        "message": "Auth works. Onboarding will be enabled once DB is configured",
-        "uid": current_user["uid"],
-        "email": current_user["email"],
-        "requested_role": data.role
-    }
-
-@router.patch("/user/me")
-async def update_me(
-    data: dict,
-    current_user = Depends(get_current_user)
+# HOSPITAL → APPROVED PATIENTS
+@router.get("/hospital/patients")
+async def get_hospital_patients(
+    current_user=Depends(get_current_user)
 ):
     mongo = await getMongo()
 
-    uid = current_user["uid"]
-
-    update_doc = {}
-
-    # 1. Move name to root
-    if "name" in data:
-        update_doc["name"] = data.pop("name")
-
-    # 2. Everything else goes into BioData
-    if data:
-        update_doc["BioData"] = data
-
-    result = await mongo.update_one(
+    # Ensure hospital
+    hospital = await mongo.find_one(
         "Users",
-        {"uid": uid},
-        update_doc
+        {"uid": current_user["uid"], "user_type": "institution"}
     )
 
-    return {
-        "modified": result
-    }
+    if not hospital:
+        return []
 
+    # Fetch approved access requests
+    requests = await mongo.find_many(
+        "AccessRequests",
+        {
+            "hospital_uid": current_user["uid"],
+            "status": "approved"
+        }
+    )
+
+    patient_emails = [r["patient_email"] for r in requests]
+
+    if not patient_emails:
+        return []
+
+    patients = await mongo.find_many(
+        "Users",
+        {
+            "user_type": "patient",
+            "email": {"$in": patient_emails}
+        }
+    )
+
+    for p in patients:
+        p["_id"] = str(p["_id"])
+    print("FETCH HOSPITAL UID:", current_user["uid"])
+
+    return patients

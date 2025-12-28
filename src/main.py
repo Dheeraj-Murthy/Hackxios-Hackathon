@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from bson import ObjectId
 from src.db.mongoWrapper import getMongo
 from bson.json_util import dumps
-from src.routers import report,llmReport,user,dashboard
+from src.routers import report,llmReport,user,dashboard, access
 from src.core.config import settings
 import json
 
@@ -28,6 +28,7 @@ app.include_router(report.router)
 app.include_router(llmReport.router)
 app.include_router(user.router)
 app.include_router(dashboard.router)
+app.include_router(access.router)
 
 @app.get("/test-comment")
 async def test_comment():

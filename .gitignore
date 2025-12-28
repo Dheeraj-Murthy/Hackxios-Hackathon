@@ -1,7 +1,9 @@
 # Node
 node_modules/
 Frontend/node_modules/
-
+.vite/
+dist/
+Frontend/dist/
 
 # Python
 __pycache__/
@@ -11,7 +13,6 @@ __pycache__/
 # Virtual environment
 venv/
 .env
-__pycache__
 src/uploads/*
 *.log
 mathew_test.pdf
@@ -19,9 +20,7 @@ mathew_test.pdf
 # Firebase secrets
 *.json
 
-
 # OS / editor noise
 .DS_Store
 .vscode/
 .idea/
-
