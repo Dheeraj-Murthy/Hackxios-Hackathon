@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { useAuth } from "../auth/useAuth"
+import { logout } from "../auth/logout"
 
 export default function HospitalDashboard() {
   const navigate = useNavigate()
@@ -105,7 +106,17 @@ export default function HospitalDashboard() {
         <div style={{ textAlign: "right" }}>
           <div className="small-muted">Logged in as</div>
           <strong>{user?.email}</strong>
+
+          <div style={{ marginTop: 8 }}>
+            <button
+              className="btn-secondary"
+              onClick={() => logout(navigate)}
+            >
+              Logout
+            </button>
+          </div>
         </div>
+
       </div>
 
       <p className="small-muted">

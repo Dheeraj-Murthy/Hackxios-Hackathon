@@ -39,7 +39,7 @@ export default function Login() {
       const token = await user.getIdToken()
 
       // 3. Call backend /me
-      const response = await fetch("http://127.0.0.1:8000/me", {
+      const response = await fetch("http://127.0.0.1:8000/auth/me", {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,

@@ -9,8 +9,29 @@ from src.schemas import OnboardRequest
 
 router = APIRouter()
 
-# CURRENT USER
-@router.get("/me")
+
+# AUTH CHECK (ROLE + UID)
+@router.get("/auth/me")
+async def auth_me(current_user=Depends(get_current_user)):
+    mongo = await getMongo()
+
+    user = await mongo.find_one(
+        "Users",
+        {"uid": current_user["uid"]}
+    )
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not onboarded")
+
+    return {
+        "uid": current_user["uid"],
+        "email": current_user["email"],
+        "role": user["user_type"]
+    }
+
+
+# CURRENT USER PROFILE
+@router.get("/user/me")
 async def read_me(current_user=Depends(get_current_user)):
     mongo = await getMongo()
 
@@ -19,14 +40,27 @@ async def read_me(current_user=Depends(get_current_user)):
         {"uid": current_user["uid"]}
     )
 
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Sync email if it was missing in DB
+    if not user.get("email"):
+        await mongo.update_one(
+            "Users",
+            {"uid": current_user["uid"]},
+            {"$set": {"email": current_user["email"]}}
+        )
+        user["email"] = current_user["email"]
+
     return {
-        "uid": current_user["uid"],
-        "email": current_user["email"],
-        "role": user.get("user_type") if user else None
+        "uid": user["uid"],
+        "email": user["email"],
+        "user_type": user["user_type"],
+        "name": user.get("name", ""),
+        "BioData": user.get("BioData", {})
     }
 
-
-# CREATE USER (PATIENT / INSTITUTION)
+# USER CREATION (ONBOARD)
 @router.post("/user")
 async def upload_user(
     data: dict,
@@ -38,6 +72,7 @@ async def upload_user(
     if user_type not in ["patient", "institution"]:
         raise HTTPException(status_code=400, detail="Invalid user_type")
 
+    # Prevent duplicate onboarding
     existing = await mongo.find_one("Users", {"uid": current_user["uid"]})
     if existing:
         return {
@@ -45,12 +80,14 @@ async def upload_user(
             "user_type": existing["user_type"]
         }
 
+    # Base user document
     user_doc = {
         "uid": current_user["uid"],
         "email": current_user["email"],
         "user_type": user_type,
     }
 
+    # Patient-specific fields
     if user_type == "patient":
         user_doc.update({
             "name": "",
@@ -59,6 +96,7 @@ async def upload_user(
             "Reports": [],
         })
 
+    # Institution-specific fields
     if user_type == "institution":
         user_doc.update({
             "institution_name": "",
@@ -97,12 +135,14 @@ async def update_me(
     return {"status": "updated"}
 
 
-# GET USER BY ID
+
+# GET USER BY OBJECT ID
 @router.get("/user/{user_id}")
 async def get_user(user_id: str):
     mongo = await getMongo()
     user = await mongo.find_one("Users", {"_id": ObjectId(user_id)})
     return json.loads(dumps(user))
+
 
 
 # HOSPITAL → APPROVED PATIENTS
@@ -112,7 +152,7 @@ async def get_hospital_patients(
 ):
     mongo = await getMongo()
 
-    # Ensure hospital
+    # Ensure caller is a hospital
     hospital = await mongo.find_one(
         "Users",
         {"uid": current_user["uid"], "user_type": "institution"}
@@ -135,6 +175,7 @@ async def get_hospital_patients(
     if not patient_emails:
         return []
 
+    # Fetch patient user records
     patients = await mongo.find_many(
         "Users",
         {
@@ -143,8 +184,10 @@ async def get_hospital_patients(
         }
     )
 
+    # Convert ObjectId → string for frontend
     for p in patients:
         p["_id"] = str(p["_id"])
+
     print("FETCH HOSPITAL UID:", current_user["uid"])
 
     return patients

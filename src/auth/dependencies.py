@@ -1,12 +1,23 @@
-from fastapi import Depends
+from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
 from src.auth.firebase import verify_firebase_token
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
-def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+async def get_current_user(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
 ):
-    token = credentials.credentials
-    return verify_firebase_token(token)
+    # Allow preflight
+    if request.method == "OPTIONS":
+        return None
 
+    if not credentials:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    token = credentials.credentials
+
+    user = verify_firebase_token(token)
+
+    return user
