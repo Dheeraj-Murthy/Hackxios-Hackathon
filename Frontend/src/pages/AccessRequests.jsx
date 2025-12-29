@@ -18,6 +18,10 @@ export default function AccessRequests() {
         },
       })
 
+      if (!res.ok) {
+        throw new Error("Failed to fetch requests")
+      }
+
       const data = await res.json()
       setRequests(data || [])
     } catch (err) {
@@ -31,7 +35,7 @@ export default function AccessRequests() {
     try {
       const token = await user.getIdToken()
 
-      await fetch(`${BACKEND_URL}/access/respond`, {
+      const res = await fetch(`${BACKEND_URL}/access/respond`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -43,10 +47,15 @@ export default function AccessRequests() {
         }),
       })
 
+      if (!res.ok) {
+        throw new Error(`Failed to ${action} request`)
+      }
+
       // Remove from UI after action
       setRequests(prev => prev.filter(r => r._id !== request_id))
     } catch (err) {
       console.error("Failed to respond", err)
+      alert(`Failed to ${action}: ${err.message}`)
     }
   }
 
@@ -66,7 +75,7 @@ export default function AccessRequests() {
       </p>
 
       {requests.length === 0 && (
-        <div className="small-muted">No pending requests</div>
+        <div className="small-muted">No pending access requests</div>
       )}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -75,15 +84,17 @@ export default function AccessRequests() {
             key={req._id}
             className="card"
             style={{
-              padding: 14,
+              padding: 16,
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
             }}
           >
             <div>
-              <strong>Hospital UID</strong>
-              <div className="small-muted">{req.hospital_uid}</div>
+              <strong>Access Request</strong>
+              <div className="small-muted">Hospital ID: {req.hospital_uid}</div>
+              <div className="small-muted">Requested: {req.created_at ? new Date(req.created_at).toLocaleDateString() : 'Unknown date'}</div>
+              <div className="small-muted">Status: {req.status || 'pending'}</div>
             </div>
 
             <div style={{ display: "flex", gap: 8 }}>

@@ -12,9 +12,31 @@ export default function HospitalDashboard() {
   const [patientEmail, setPatientEmail] = useState("")
   const [loading, setLoading] = useState(false)
   const [patients, setPatients] = useState([])
+  const [hospitalData, setHospitalData] = useState(null)
 
-  // ================= LOAD APPROVED PATIENTS =================
+  // ================= LOAD HOSPITAL DATA =================
   useEffect(() => {
+    async function loadHospitalData() {
+      try {
+        const token = await user.getIdToken()
+
+        // Get hospital user data to get institution name
+        const userRes = await fetch("http://localhost:8000/user/me", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        if (userRes.ok) {
+          const userData = await userRes.json()
+          setHospitalData(userData)
+        }
+      } catch (err) {
+        console.error("Failed to load hospital data:", err)
+      }
+    }
+
+    // ================= LOAD APPROVED PATIENTS =================
     async function loadPatients() {
       try {
         const token = await user.getIdToken()
@@ -38,7 +60,10 @@ export default function HospitalDashboard() {
       }
     }
 
-    if (user) loadPatients()
+    if (user) {
+      loadHospitalData()
+      loadPatients()
+    }
   }, [user])
 
   // ================= REQUEST ACCESS =================
@@ -99,7 +124,7 @@ export default function HospitalDashboard() {
         <div>
           <h2 style={{ margin: 0 }}>Hospital Dashboard</h2>
           <div className="small-muted">
-            Hospital Name (to be configured)
+            {hospitalData?.institution_name || "Medical Institution"}
           </div>
         </div>
 

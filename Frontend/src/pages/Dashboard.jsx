@@ -3,71 +3,128 @@ import AnalysisCard from '../components/AnalysisCard'
 import ChartWidget from '../components/ChartWidget'
 import { useAuth } from "../auth/useAuth"
 
-const DUMMY_CONCERNED = [
-  { name: 'Vitamin D', value: '14 ng/mL' },
-  { name: 'Ferritin', value: '25 ng/mL' },
-  { name: 'TSH', value: '2.5 μIU/mL' }
-]
-
 export default function Dashboard() {
 
   const { user, loading } = useAuth()
   const [userData, setUserData] = useState(null)
   const [actionableSuggestions, setActionableSuggestions] = useState([])
   const [loadingSuggestions, setLoadingSuggestions] = useState(true)
+  const [concernedBiomarkers, setConcernedBiomarkers] = useState([])
+  const [latestAnalysis, setLatestAnalysis] = useState(null)
+  const [loadingAnalysis, setLoadingAnalysis] = useState(true)
 
 
   useEffect(() => {
     if (!user) return
 
-    const fetchUser = async () => {
+    const fetchDashboardData = async () => {
       try {
         const token = await user.getIdToken()
 
-        const res = await fetch("http://localhost:8000/user/me", {
+        // Fetch user data
+        const userRes = await fetch("http://localhost:8000/user/me", {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         })
 
-        if (!res.ok) throw new Error("Failed to fetch user")
+        if (!userRes.ok) throw new Error("Failed to fetch user")
+        const userData = await userRes.json()
+        setUserData(userData)
 
-        const data = await res.json()
-        setUserData(data)
+        // Fetch actionable suggestions
+        const suggestionsRes = await fetch(
+          "http://localhost:8000/dashboard/actionable-suggestions",
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        )
 
-      } catch (err) {
-        console.error("Dashboard user fetch failed:", err)
-      }
-    }
+        if (suggestionsRes.ok) {
+          const suggestionsData = await suggestionsRes.json()
+          setActionableSuggestions(suggestionsData.actionable_suggestions || [])
+        } else {
+          console.error("Failed to fetch actionable suggestions")
+        }
 
-    fetchUser()
-
-    const fetchActionableSuggestions = async () => {
-    try {
-      const token = await user.getIdToken()
-
-      const res = await fetch(
-        "http://localhost:8000/dashboard/actionable-suggestions",
-        {
+        // Fetch latest report and analysis
+        const reportsRes = await fetch(`http://127.0.0.1:8000/api/reports/patient/${user.uid}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
+        })
+
+        if (reportsRes.ok) {
+          const reportsData = await reportsRes.json()
+          const reports = reportsData.reports || []
+          
+          if (reports.length > 0) {
+            // Get the most recent report
+            const latestReport = reports.sort((a, b) => 
+              new Date(b.Processed_at || 0) - new Date(a.Processed_at || 0)
+            )[0]
+
+            // Extract concerned biomarkers from the latest report
+            const attributes = latestReport.Attributes || {}
+            const concerned = []
+            
+            for (const [key, test] of Object.entries(attributes)) {
+              if (test.name && test.value && test.remark && test.remark.toLowerCase().includes('abnormal')) {
+                concerned.push({
+                  name: test.name,
+                  value: test.value,
+                  unit: test.unit || ''
+                })
+              }
+            }
+
+            // If no abnormal markers, take first few tests
+            if (concerned.length === 0 && Object.keys(attributes).length > 0) {
+              const testEntries = Object.values(attributes).slice(0, 3)
+              testEntries.forEach(test => {
+                if (test.name && test.value) {
+                  concerned.push({
+                    name: test.name,
+                    value: test.value,
+                    unit: test.unit || ''
+                  })
+                }
+              })
+            }
+
+            setConcernedBiomarkers(concerned)
+
+            // Fetch LLM analysis for the latest report
+            if (latestReport.llm_report_id) {
+              try {
+                const analysisRes = await fetch(`http://127.0.0.1:8000/api/LLMReport/${latestReport.llm_report_id}`, {
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                  },
+                })
+
+                if (analysisRes.ok) {
+                  const analysisData = await analysisRes.json()
+                  setLatestAnalysis(analysisData.output)
+                }
+              } catch (err) {
+                console.error("Failed to fetch analysis:", err)
+              }
+            }
+          }
         }
-      )
 
-      if (!res.ok) throw new Error("Failed to fetch actionable suggestions")
-
-      const data = await res.json()
-      setActionableSuggestions(data.actionable_suggestions || [])
-
-    } catch (err) {
-      console.error("Failed to load actionable suggestions:", err)
-    } finally {
-      setLoadingSuggestions(false)
+      } catch (err) {
+        console.error("Dashboard data fetch failed:", err)
+      } finally {
+        setLoadingSuggestions(false)
+        setLoadingAnalysis(false)
+      }
     }
-  }
 
-  fetchActionableSuggestions()
+    fetchDashboardData()
   }, [user])
 
   if (loading) {
@@ -83,27 +140,35 @@ export default function Dashboard() {
           </h2>
 
           <p className="small-muted">
-            Based on your latest blood test, your Vitamin D is lower than the optimal range.
-            Increasing your Vitamin D intake and getting more sunlight is recommended.
+            {latestAnalysis?.interpretation 
+              ? latestAnalysis.interpretation.slice(0, 120) + "..."
+              : "Upload your first medical report to see personalized insights and recommendations."
+            }
           </p>
         </div>
       </div>
 
       <h3>Concern Biomarkers</h3>
       <div className="concern-row">
-        {DUMMY_CONCERNED.map((c) => (
-          <div key={c.name} className="card concern-card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <strong>{c.name}</strong>
-                <div className="small-muted">{c.value}</div>
+        {loadingAnalysis ? (
+          <div className="card">Loading biomarkers...</div>
+        ) : concernedBiomarkers.length === 0 ? (
+          <div className="card">No biomarkers to display. Upload a report to see your health metrics.</div>
+        ) : (
+          concernedBiomarkers.map((c) => (
+            <div key={c.name} className="card concern-card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <strong>{c.name}</strong>
+                  <div className="small-muted">{c.value} {c.unit}</div>
+                </div>
+              </div>
+              <div style={{ marginTop: 8 }}>
+                <ChartWidget biomarker={c.name} />
               </div>
             </div>
-            <div style={{ marginTop: 8 }}>
-              <ChartWidget biomarker={c.name} />
-            </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
 
       <div className="grid">
@@ -125,17 +190,13 @@ export default function Dashboard() {
 
         <div className="card">
           <h3>Detailed Analysis</h3>
-          <AnalysisCard
-            analysis={{
-              interpretation:
-                'The report shows elevated fasting glucose and borderline low vitamin D. Hemoglobin within normal range.',
-              lifestyle_changes: ['Reduce refined carbs', '30 min brisk walk 5x per week'],
-              nutritional_changes: ['Increase vitamin D rich foods', 'Moderate carbohydrate intake'],
-              symptom_probable_cause: null,
-              next_steps: ['Consult GP for metabolic panel', 'Repeat test in 3 months'],
-              concern_options: ['Fasting Glucose', 'Vitamin D', 'HbA1c']
-            }}
-          />
+          {loadingAnalysis ? (
+            <p className="small-muted">Loading latest analysis...</p>
+          ) : latestAnalysis ? (
+            <AnalysisCard analysis={latestAnalysis} />
+          ) : (
+            <p className="small-muted">No analysis available. Upload and analyze a report to see detailed insights.</p>
+          )}
         </div>
       </div>
     </div>

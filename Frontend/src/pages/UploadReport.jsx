@@ -1,16 +1,21 @@
 import React, { useState, useRef } from 'react'
 import AnalysisCard from '../components/AnalysisCard'
 import { UploadCloud } from 'lucide-react'
+import { useAuth } from "../auth/useAuth"
 
 export default function UploadReport(){
+  const { user } = useAuth()
   const [file, setFile] = useState(null)
   const [analysis, setAnalysis] = useState(null)
   const [dragOver, setDragOver] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState("")
   const inputRef = useRef()
 
   function onFile(e){
     const f = e.target.files && e.target.files[0]
     if(f) setFile(f)
+    setError("")
   }
 
   function onDrop(e){
@@ -18,21 +23,54 @@ export default function UploadReport(){
     setDragOver(false)
     const f = e.dataTransfer.files && e.dataTransfer.files[0]
     if(f) setFile(f)
+    setError("")
   }
 
-  function onUpload(){
-    // TODO: Replace this with real upload to backend. The analysis below is DUMMY data.
-    // Dummy analysis object created to simulate server LLM-generated report.
-    const dummy = {
-      interpretation: 'The report shows elevated fasting glucose and borderline low vitamin D. Hemoglobin within normal range.',
-      lifestyle_changes: ['Reduce refined carbs', '30 min brisk walk 5x per week'],
-      nutritional_changes: ['Increase vitamin D rich foods', 'Moderate carbohydrate intake'],
-      symptom_probable_cause: null,
-      next_steps: ['Consult GP for metabolic panel', 'Repeat test in 3 months'],
-      concern_options: ['Fasting Glucose','Vitamin D','HbA1c']
+  async function onUpload(){
+    if (!file) {
+      setError("Please select a file first")
+      return
     }
-    // simulate server response
-    setTimeout(()=> setAnalysis(dummy), 450)
+
+    setUploading(true)
+    setError("")
+
+    try {
+      const token = await user.getIdToken()
+      
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('auto_analyze', 'true')
+
+      const response = await fetch("http://127.0.0.1:8000/api/reports/upload-and-analyze", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const errorData = await response.text()
+        throw new Error(errorData || "Upload failed")
+      }
+
+      const data = await response.json()
+      
+      if (data.llm_analysis_complete && data.llm_analysis) {
+        setAnalysis(data.llm_analysis)
+      } else if (data.llm_error) {
+        setError(`Upload successful but analysis failed: ${data.llm_error}`)
+      } else {
+        setError("Upload successful but analysis is not available")
+      }
+
+    } catch (err) {
+      console.error("Upload error:", err)
+      setError(err.message || "Failed to upload file")
+    } finally {
+      setUploading(false)
+    }
   }
 
   return (
@@ -51,16 +89,24 @@ export default function UploadReport(){
           <div style={{fontSize:18, fontWeight:600}}>Drop a file or click to browse</div>
           <div className="small-muted">Supported: PDF, PNG, JPG</div>
 
+          {error && (
+            <div className="error-box" style={{ marginBottom: 12 }}>
+              {error}
+            </div>
+          )}
+
           <div className="upload-actions">
             <input ref={inputRef} className="file-input" id="report-file" type="file" accept=".pdf,.png,.jpg,.jpeg" onChange={onFile} />
             <button className="upload-btn" onClick={()=>inputRef.current && inputRef.current.click()}>Choose file</button>
-            <button className="upload-btn primary" onClick={onUpload} disabled={!file}>{file ? 'Upload & Get Analysis' : 'Upload'}</button>
+            <button className="upload-btn primary" onClick={onUpload} disabled={!file || uploading}>
+              {uploading ? 'Uploading...' : (file ? 'Upload & Get Analysis' : 'Upload')}
+            </button>
           </div>
 
           {file && (
             <div className="file-info">
               <div className="file-name">{file.name}</div>
-              <button className="remove-file" onClick={()=>setFile(null)}>Remove</button>
+              <button className="remove-file" onClick={()=>{setFile(null); setError(""); setAnalysis(null)}}>Remove</button>
             </div>
           )}
         </div>
