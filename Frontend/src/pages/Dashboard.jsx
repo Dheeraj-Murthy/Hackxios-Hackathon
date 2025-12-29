@@ -3,13 +3,14 @@ import AnalysisCard from '../components/AnalysisCard'
 import ChartWidget from '../components/ChartWidget'
 import { useAuth } from "../auth/useAuth"
 import { useParams, useLocation } from "react-router-dom"
+import { auth } from '../firebase/firebase'
 
-export default function Dashboard() {
-    const { uid: patientUid } = useParams()
+export default function Dashboard({ readOnly: propReadOnly, hospitalView: propHospitalView, patientUid: propPatientUid }) {
+    const { uid: urlPatientUid } = useParams()
     const location = useLocation()
-    const isHospitalView = location.pathname.startsWith("/hospital/patient")
-    const readOnly = location.state?.readOnly === true
-    const { user, loading } = useAuth()
+    const isHospitalView = propHospitalView || location.pathname.startsWith("/hospital/patient")
+    const readOnly = propReadOnly || location.state?.readOnly === true
+    const { user, loading: authLoading } = useAuth()
     const [userData, setUserData] = useState(null)
     const [actionableSuggestions, setActionableSuggestions] = useState([])
     const [loadingSuggestions, setLoadingSuggestions] = useState(true)
@@ -18,10 +19,11 @@ export default function Dashboard() {
     const [loadingAnalysis, setLoadingAnalysis] = useState(true)
 
     // Determine which patient UID to use
-    const targetUid = isHospitalView ? patientUid : user?.uid
+    const targetUid = isHospitalView ? (propPatientUid || urlPatientUid) : user?.uid
 
     useEffect(() => {
-        if (!user || !targetUid) return
+        // Wait for auth to load and targetUid to be available
+        if (authLoading || !targetUid || (!user && !isHospitalView)) return
 
         const fetchDashboardData = async () => {
             try {
@@ -31,7 +33,7 @@ export default function Dashboard() {
                 const url = isHospitalView
                     ? `http://localhost:8000/hospital/patient/${targetUid}`
                     : "http://localhost:8000/user/me"
-                
+
                 const userRes = await fetch(url, {
                     headers: {
                         Authorization: `Bearer ${token}`,
@@ -139,7 +141,7 @@ export default function Dashboard() {
         fetchDashboardData()
     }, [user, targetUid, isHospitalView])
 
-    if (loading) {
+    if (authLoading) {
         return <div className="card">Loading dashboard...</div>
     }
 

@@ -61,12 +61,14 @@ async def respond_request(data: dict, current_user=Depends(get_current_user)):
     if not request:
         raise HTTPException(404, "Request not found")
 
+    status = "approved" if action == "approve" else "rejected"
     # Update request status
     await mongo.update_one(
         "AccessRequests",
         {"_id": ObjectId(request_id)},
-        {"status": action},
+        {"status": status},
     )
+
 
     # IF APPROVED → LINK PATIENT TO HOSPITAL
     if action == "approve":
@@ -74,6 +76,7 @@ async def respond_request(data: dict, current_user=Depends(get_current_user)):
             "Users",
             {"uid": request["hospital_uid"]},
             {"$addToSet": {"patient_list": current_user["uid"]}},
+            raw=True
         )
 
     return {"status": action}

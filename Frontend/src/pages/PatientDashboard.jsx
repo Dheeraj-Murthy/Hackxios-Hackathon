@@ -43,6 +43,6 @@ export default function HospitalPatientDashboard() {
   if (loading) return <div className="card">Loading patient...</div>
   if (!patient) return <div className="card">Patient not found</div>
 
-  return ( <Dashboard readOnly hospitalView patientUid={uid} />
+  return ( <Dashboard readOnly={true} hospitalView={true} patientUid={uid} />
   )
 }

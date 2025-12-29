@@ -3,25 +3,30 @@ import AnalysisCard from '../components/AnalysisCard'
 import { useAuth } from "../auth/useAuth"
 import { useParams, useLocation } from "react-router-dom"
 
-export default function PreviousReports() {
-  const { user } = useAuth()
-  const { uid: patientUid } = useParams()
+export default function PreviousReports({ readOnly, hospitalView, patientUid: propPatientUid }) {
+  const { user, loading: authLoading } = useAuth()
+  const { uid: urlPatientUid } = useParams()
   const location = useLocation()
-  const isHospitalView = location.pathname.startsWith("/hospital/patient")
-  const readOnly = location.state?.readOnly === true
+  
+  const isHospitalView = hospitalView || location.pathname.startsWith("/hospital/patient")
+  const readOnlyMode = readOnly || location.state?.readOnly === true
   
   const [reports, setReports] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
   // Determine which patient UID to use
-  const targetUid = isHospitalView ? patientUid : user?.uid
+  const targetUid = isHospitalView ? (propPatientUid || urlPatientUid) : user?.uid
 
   useEffect(() => {
-    if (!targetUid) return
+    // Wait for auth to load and targetUid to be available
+    if (authLoading || !targetUid || (!user && !isHospitalView)) return
 
     const fetchReports = async () => {
       try {
+        if (!user) {
+          throw new Error("User not authenticated")
+        }
         const token = await user.getIdToken()
         
         const response = await fetch(`http://127.0.0.1:8000/api/reports/patient/${targetUid}`, {

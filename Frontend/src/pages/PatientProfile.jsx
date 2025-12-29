@@ -5,6 +5,6 @@ import { useParams } from "react-router-dom"
 export default function HospitalPatientProfile() {
   const { uid } = useParams()
 
-  return <Profile readOnly hospitalView patientUid={uid} />
+  return <Profile readOnly={true} hospitalView={true} patientUid={uid} />
 
 }
