@@ -48,7 +48,7 @@ async def read_me(current_user=Depends(get_current_user)):
         await mongo.update_one(
             "Users",
             {"uid": current_user["uid"]},
-            {"$set": {"email": current_user["email"]}}
+            {"email": current_user["email"]}
         )
         user["email"] = current_user["email"]
 
@@ -57,9 +57,11 @@ async def read_me(current_user=Depends(get_current_user)):
         "email": user["email"],
         "user_type": user["user_type"],
         "name": user.get("name", ""),
+        "hospital_name": user.get("hospital_name"),
         "BioData": user.get("BioData", {}),
-        "Favorites": user.get("Favorites", [])
+        "Favorites": user.get("Favorites", [])        
     }
+
 
 # USER CREATION (ONBOARD)
 @router.post("/user")
@@ -99,9 +101,18 @@ async def upload_user(
 
     # Institution-specific fields
     if user_type == "institution":
+        hospital_name = data.get("hospital_name")
+
+        if not hospital_name:
+            raise HTTPException(
+                status_code=400,
+                detail="hospital_name is required for institution registration"
+            )
+
         user_doc.update({
-            "institution_name": "",
+            "hospital_name": hospital_name
         })
+
 
     inserted_id = await mongo.insert_one("Users", user_doc)
 

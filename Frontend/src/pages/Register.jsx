@@ -1,6 +1,9 @@
 import React, { useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth"
+import {
+  createUserWithEmailAndPassword,
+  sendEmailVerification,
+} from "firebase/auth"
 import { auth } from "../firebase/firebase"
 
 const BACKEND_URL = "http://127.0.0.1:8000"
@@ -12,6 +15,7 @@ export default function Register() {
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [role, setRole] = useState("patient") // patient | institution
+  const [hospitalName, setHospitalName] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
@@ -28,10 +32,15 @@ export default function Register() {
       return
     }
 
+    if (role === "institution" && !hospitalName.trim()) {
+      setError("Hospital name is required")
+      return
+    }
+
     try {
       setLoading(true)
 
-      // 1. Firebase signup (auto-login)
+      // 1. Firebase signup
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         email,
@@ -45,22 +54,24 @@ export default function Register() {
       sendEmailVerification(user, {
         url: "http://localhost:5173/profile",
         handleCodeInApp: false,
-      }).catch(() => { })
+      }).catch(() => {})
 
-      // 3. Create user in backend
+      // 3. Backend onboarding payload
+      const payload = {
+        user_type: role,
+      }
+
+      if (role === "institution") {
+        payload.hospital_name = hospitalName
+      }
+
       const res = await fetch(`${BACKEND_URL}/user`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          user_type: role,
-          name: "",
-          Favorites: [],
-          Reports: [],
-          BioData: {},
-        }),
+        body: JSON.stringify(payload),
       })
 
       if (!res.ok) {
@@ -88,7 +99,6 @@ export default function Register() {
   return (
     <div style={{ padding: 28 }}>
       <div className="card login-split">
-
         {/* LEFT */}
         <div className="login-left">
           <img src="/src/assets/illustration.png" alt="illustration" />
@@ -116,6 +126,20 @@ export default function Register() {
                 Hospital
               </button>
             </div>
+
+            {/* HOSPITAL NAME (ONLY FOR HOSPITAL) */}
+            {role === "institution" && (
+              <div className="form-row">
+                <label>Hospital Name</label>
+                <input
+                  className="input"
+                  type="text"
+                  placeholder="Enter your Institution's Name"
+                  value={hospitalName}
+                  onChange={(e) => setHospitalName(e.target.value)}
+                />
+              </div>
+            )}
 
             <div className="form-row">
               <label>Email</label>
@@ -150,7 +174,7 @@ export default function Register() {
               />
             </div>
 
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: "flex", gap: 8 }}>
               <button
                 type="button"
                 className="btn-primary"
@@ -158,10 +182,10 @@ export default function Register() {
                 disabled={loading}
                 onClick={handleRegister}
               >
-
                 {loading ? "Creating account..." : "Register"}
               </button>
             </div>
+
             <div style={{ marginTop: 12, textAlign: "center" }}>
               <small className="small-muted">
                 Already have an account? <Link to="/login">Login</Link>

@@ -51,7 +51,7 @@ function PatientLayout() {
                     </NavLink>
 
                     <NavLink to="/access-requests">
-                        <FileText size={16} style={{ marginRight: 8 }} /> Access Requests
+                        <FileText size={16} style={{ marginRight: 8 }} /> Manage Access
                     </NavLink>
                 </nav>
 
