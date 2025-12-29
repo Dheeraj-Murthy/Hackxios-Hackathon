@@ -127,7 +127,7 @@ class LLMReportAgent:
                 return v
             # if its a comma separated string
             if isinstance(v, str):
-                return [s.strip() for s in v.split("\n") if s.strip()] if "\n" in v else [s.strip() for s in v.split(",") if s.strip()]
+                return [s for s in v.split("\n") if s] if "\n" in v else [s for s in v.split(",") if s]
             return [v]
 
         output_candidate = None

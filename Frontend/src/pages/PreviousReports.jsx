@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react'
 import AnalysisCard from '../components/AnalysisCard'
 import { useAuth } from "../auth/useAuth"
-import { useParams, useLocation } from "react-router-dom"
+import { useParams, useLocation, useNavigate } from "react-router-dom"
+import { Edit2 } from 'lucide-react'
 
 export default function PreviousReports({ readOnly, hospitalView, patientUid: propPatientUid }) {
   const { user, loading: authLoading } = useAuth()
   const { uid: urlPatientUid } = useParams()
   const location = useLocation()
+  const navigate = useNavigate()
   
   const isHospitalView = hospitalView || location.pathname.startsWith("/hospital/patient")
   const readOnlyMode = readOnly || location.state?.readOnly === true
@@ -176,11 +178,22 @@ export default function PreviousReports({ readOnly, hospitalView, patientUid: pr
       <div style={{display:'grid', gap:12}}>
         {reports.map(r => (
           <div key={r._id} className="card">
-            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-              <strong>{r.date}</strong>
-              <div className="small-muted">
-                {r.analysis?.interpretation ? r.analysis.interpretation.slice(0, 60) + "..." : "No analysis available"}
+            <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom: '12px'}}>
+              <div>
+                <strong>{r.date}</strong>
+                <div className="small-muted" style={{marginTop: '4px'}}>
+                  {r.analysis?.interpretation ? r.analysis.interpretation.slice(0, 60) + "..." : "No analysis available"}
+                </div>
               </div>
+              <button
+                onClick={() => navigate(`/report/${r.Report_id}`)}
+                className="button"
+                style={{ fontSize: '12px', padding: '6px 12px' }}
+                title="View and edit full report"
+              >
+                <Edit2 size={14} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
+                View & Edit
+              </button>
             </div>
             {r.analysis && (
               <AnalysisCard 

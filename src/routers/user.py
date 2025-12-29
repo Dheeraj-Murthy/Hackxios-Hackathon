@@ -148,6 +148,26 @@ async def update_me(
 
 
 # FAVORITES MANAGEMENT
+@router.get("/user/favorites")
+async def get_favorite_markers(
+    current_user=Depends(get_current_user)
+):
+    mongo = await getMongo()
+    
+    user = await mongo.find_one(
+        "Users",
+        {"uid": current_user["uid"], "user_type": "patient"}
+    )
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="Patient user not found")
+    
+    favorites = user.get("Favorites", [])
+    print(f"Retrieved favorites for user {current_user['uid']}: {favorites}")
+    
+    return {"favorites": favorites}
+
+
 @router.post("/user/favorites")
 async def add_favorite_marker(
     data: dict,
@@ -165,18 +185,9 @@ async def add_favorite_marker(
     if not user:
         raise HTTPException(status_code=404, detail="Patient user not found")
     
-    marker = data.get("marker", "").strip()
+    marker = data.get("marker", "")
     if not marker:
         raise HTTPException(status_code=400, detail="Marker name is required")
-    
-    # Sanitize marker: convert to title case, remove extra spaces, normalize characters
-    marker = re.sub(r'\s+', ' ', marker.strip())  # Replace multiple spaces with single space
-    marker = marker.title()  # Convert to title case (e.g., "hemoglobin a1c" -> "Hemoglobin A1c")
-    marker = re.sub(r'[^a-zA-Z0-9\s\-_()]', '', marker)  # Remove special characters except spaces, hyphens, underscores, parentheses
-    marker = marker.strip()  # Remove leading/trailing spaces again
-    
-    if not marker:
-        raise HTTPException(status_code=400, detail="Invalid marker name after sanitization")
     
     print(f"Adding marker: '{marker}' for user: {current_user['uid']}")
     
@@ -219,18 +230,9 @@ async def remove_favorite_marker(
     if not user:
         raise HTTPException(status_code=404, detail="Patient user not found")
     
-    marker = data.get("marker", "").strip()
+    marker = data.get("marker", "")
     if not marker:
         raise HTTPException(status_code=400, detail="Marker name is required")
-    
-    # Sanitize marker the same way as in add
-    marker = re.sub(r'\s+', ' ', marker.strip())
-    marker = marker.title()
-    marker = re.sub(r'[^a-zA-Z0-9\s\-_()]', '', marker)
-    marker = marker.strip()
-    
-    if not marker:
-        raise HTTPException(status_code=400, detail="Invalid marker name after sanitization")
     
     print(f"Removing marker: '{marker}' for user: {current_user['uid']}")
     

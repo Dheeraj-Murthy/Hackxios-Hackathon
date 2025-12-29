@@ -15,6 +15,7 @@ import HospitalPatientReports from './pages/PatientReports'
 import HospitalPatientLayout from "./pages/HospitalPatientLayout"
 import { } from "module";
 import AccessRequests from "./pages/AccessRequests"
+import ReportVisualization from "./pages/ReportVisualization"
 import { signOut } from "firebase/auth"
 import { auth } from "./firebase/firebase"
 import { useNavigate } from "react-router-dom"
@@ -104,6 +105,7 @@ export default function App() {
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/upload" element={<UploadReport />} />
                 <Route path="/previous" element={<PreviousReports />} />
+                <Route path="/report/:report_id" element={<ReportVisualization />} />
                 <Route path="/access-requests" element={<AccessRequests />} />
             </Route>
 

@@ -7,7 +7,7 @@ from fastapi import UploadFile, HTTPException
 class FileHandler:
     def __init__(self, upload_dir: str = "src/uploads"):
         self.upload_dir = upload_dir
-        self.allowed_extensions = {'.pdf'}
+        self.allowed_extensions = ['.pdf']
         self.max_file_size = 10 * 1024 * 1024  # 10MB
         
         # Create upload directory if it doesn't exist
@@ -52,7 +52,7 @@ class FileHandler:
             
             # Generate unique file ID and path
             file_id = str(uuid.uuid4())
-            file_ext = os.path.splitext(file.filename)[1].lower()
+            file_ext = os.path.splitext(file.filename or "")[1].lower()
             filename = f"{file_id}{file_ext}"
             file_path = os.path.join(self.upload_dir, filename)
             
@@ -153,7 +153,7 @@ class FileHandler:
         Extract the data from the pdf file and then put it into a temporary csv file
         """
         try:
-            import camelot
+            import camelot as camelot
             tables = camelot.read_pdf(
                 input_file_path,
                 flavor="stream",
@@ -192,7 +192,7 @@ class FileHandler:
                 names=["name", "value_and_remark", "range", "unit"],
             )
             
-            df = df[~df.apply(lambda r: any(str(v).strip() == "" for v in r), axis=1)]
+            
             
             # Keep only rows that look like actual test results
             df = df[
@@ -202,10 +202,10 @@ class FileHandler:
             
             # Function to split value_and_remark into separate value and remark
             def split_value_and_remark(value_remark_str):
-                if pd.isna(value_remark_str) or str(value_remark_str).strip() == "":
+                if pd.isna(value_remark_str) or str(value_remark_str) == "":
                     return "", None
                 
-                value_remark_str = str(value_remark_str).strip()
+                value_remark_str = str(value_remark_str)
                 
                 # Pattern to match: number + optional decimal + optional unit + optional remark
                 # Examples: "110 mg/dL", "12.5 g/dL", "82", "126", "41 High"
@@ -213,14 +213,14 @@ class FileHandler:
                 match = re.match(pattern, value_remark_str)
                 
                 if match:
-                    value_part = match.group(1).strip()
-                    remark_part = match.group(2).strip() if match.group(2) else None
+                    value_part = match.group(1)
+                    remark_part = match.group(2) if match.group(2) else None
                     
                     # If remark is in parentheses, extract content
                     if remark_part and remark_part.startswith('(') and remark_part.endswith(')'):
-                        remark_part = remark_part[1:-1].strip()
+                        remark_part = remark_part[1:-1]
                     
-                    return value_part, remark_part if remark_part and remark_part.strip() else None
+                    return value_part, remark_part if remark_part else None
                 else:
                     # Handle pure numbers without units - treat as value
                     if re.match(r'^\d+\.?\d*$', value_remark_str):
