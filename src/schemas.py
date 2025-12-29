@@ -71,12 +71,25 @@ class ReportCreate(BaseModel):
     Attributes: Dict[str, MetricData]
     llm_output: Optional[str] = None
 
+class ProcessedAtUpdate(BaseModel):
+    processed_at: datetime
 
-class ReportUpdate(BaseModel):
-    Patient_id: Optional[str] = None
-    Attributes: Optional[Dict[str, MetricData]] = None
-    llm_output: Optional[str] = None
+class AttributeUpdateByName(BaseModel):
+    name: str  # e.g. "BILIRUBIN, TOTAL"
+    value: Optional[str] = None
+    remark: Optional[str] = None
+    range: Optional[str] = None
+    unit: Optional[str] = None
 
+class AttributeCreate(BaseModel):
+    name: str
+    value: str
+    remark: Optional[str] = None
+    range: Optional[str] = None
+    unit: Optional[str] = None
+
+class AttributeDeleteByName(BaseModel):
+    name: str
 
 #Authentication
 class OnboardRequest(BaseModel):

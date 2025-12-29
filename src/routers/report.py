@@ -2,13 +2,14 @@ from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Form
 from fastapi.responses import JSONResponse
 from typing import List, Optional
 import os
+import re
 import json
 from datetime import datetime
 from bson import ObjectId
 from bson.json_util import dumps
 
 from src.db.mongoWrapper import getMongo
-from src.schemas import ReportModel
+from src.schemas import ReportModel, ProcessedAtUpdate, AttributeUpdateByName, AttributeCreate, AttributeDeleteByName
 from src.utils.file_handler import FileHandler
 from src.llm_agent import LLMReportAgent
 
@@ -420,39 +421,182 @@ async def get_patient_reports(patient_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error retrieving patient reports: {str(e)}")
 
+@router.patch("/reports/{report_id}/processed-at")
+async def update_processed_at(
+    report_id: str,
+    payload: ProcessedAtUpdate
+):
+    mongo = await getMongo()
+    if mongo is None:
+        raise HTTPException(status_code=500, detail="Database not connected")
 
-@router.put("/reports/{report_id}")
-async def update_report(report_id: str, report_update: dict):
-    """
-    Update an existing report
-    """
-    try:
-        mongo = await getMongo()
-        if mongo is None:
-            raise HTTPException(status_code=500, detail="Database not connected")
-        
-        # Check if report exists
-        existing_report = await mongo.find_one("Reports", {"Report_id": report_id})
-        if not existing_report:
-            raise HTTPException(status_code=404, detail="Report not found")
-        
-        # Update report
-        if report_update:
-            modified_count = await mongo.update_one("Reports", {"Report_id": report_id}, report_update)
-            if modified_count == 0:
-                raise HTTPException(status_code=500, detail="Failed to update report")
-        
-        # Return updated report
-        updated_report = await mongo.find_one("Reports", {"Report_id": report_id})
-        if "_id" in updated_report:
-            updated_report["_id"] = str(updated_report["_id"])
-        
-        return updated_report
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error updating report: {str(e)}")
+    updated = await mongo.update_one(
+        "Reports",
+        {"Report_id": report_id},
+        {"Processed_at": payload.processed_at.isoformat()}
+    )
+
+    if updated == 0:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    return {
+        "message": "Processed_at updated successfully",
+        "report_id": report_id,
+        "processed_at": payload.processed_at
+    }
+
+@router.patch("/reports/{report_id}/attribute-by-name")
+async def update_attribute_by_name(
+    report_id: str,
+    payload: AttributeUpdateByName
+):
+    mongo = await getMongo()
+    if mongo is None:
+        raise HTTPException(status_code=500, detail="Database not connected")
+
+    # 1. Fetch report
+    report = await mongo.find_one("Reports", {"Report_id": report_id})
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    attributes = report.get("Attributes", {})
+
+    # 2. Find matching test key
+    test_key = None
+    for key, test in attributes.items():
+        if test.get("name") == payload.name:
+            test_key = key
+            break
+
+    if not test_key:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Test with name '{payload.name}' not found"
+        )
+
+    # 3. Build update dict (only provided fields)
+    update_fields = {}
+    for field in ["value", "remark", "range", "unit"]:
+        field_value = getattr(payload, field)
+        if field_value is not None:
+            update_fields[f"Attributes.{test_key}.{field}"] = field_value
+
+    if not update_fields:
+        raise HTTPException(
+            status_code=400,
+            detail="No fields provided for update"
+        )
+
+    # 4. Apply update
+    await mongo.update_one(
+        "Reports",
+        {"Report_id": report_id},
+        update_fields
+    )
+
+    return {
+        "message": "Test attribute updated successfully",
+        "report_id": report_id,
+        "test_key": test_key,
+        "test_name": payload.name,
+        "updated_fields": update_fields
+    }
+
+@router.post("/reports/{report_id}/attribute")
+async def add_attribute(
+    report_id: str,
+    payload: AttributeCreate
+):
+    mongo = await getMongo()
+    if mongo is None:
+        raise HTTPException(status_code=500, detail="Database not connected")
+
+    # 1. Fetch report
+    report = await mongo.find_one("Reports", {"Report_id": report_id})
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    attributes = report.get("Attributes", {})
+
+    # 2. Prevent duplicate test names
+    for test in attributes.values():
+        if test.get("name") == payload.name:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Test with name '{payload.name}' already exists"
+            )
+
+    # 3. Compute next test key
+    max_index = 0
+    pattern = re.compile(r"test_(\d+)")
+
+    for key in attributes.keys():
+        match = pattern.match(key)
+        if match:
+            max_index = max(max_index, int(match.group(1)))
+
+    new_test_key = f"test_{max_index + 1}"
+
+    # 4. Create new attribute
+    new_attribute = {
+        "name": payload.name,
+        "value": payload.value,
+        "remark": payload.remark,
+        "range": payload.range,
+        "unit": payload.unit
+    }
+
+    await mongo.update_one(
+        "Reports",
+        {"Report_id": report_id},
+        {f"Attributes.{new_test_key}": new_attribute}
+    )
+
+    return {
+        "message": "Attribute added successfully",
+        "report_id": report_id,
+        "test_key": new_test_key,
+        "attribute": new_attribute
+    }
+
+
+@router.delete("/reports/{report_id}/attribute-by-name")
+async def delete_attribute_by_name(report_id: str, payload: AttributeDeleteByName):
+    mongo = await getMongo()
+    if mongo is None:
+        raise HTTPException(status_code=500, detail="Database not connected")
+
+    report = await mongo.find_one("Reports", {"Report_id": report_id})
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    attributes = report.get("Attributes", {})
+
+    test_key = None
+    for key, test in attributes.items():
+        if test.get("name") == payload.name:
+            test_key = key
+            break
+
+    if not test_key:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Test '{payload.name}' not found"
+        )
+
+    # 🔥 REAL deletion
+    await mongo.update_one(
+        "Reports",
+        {"Report_id": report_id},
+        {"$unset": {f"Attributes.{test_key}": ""}},
+        raw=True
+    )
+
+    return {
+        "message": "Attribute deleted successfully",
+        "deleted_test_key": test_key,
+        "deleted_test_name": payload.name
+    }
 
 @router.get("/draw_graph/{patient_id}/{attribute}")
 async def draw_graph_data(patient_id: str, attribute: str):
