@@ -180,7 +180,7 @@ export default function Dashboard({ readOnly: propReadOnly, hospitalView: propHo
                                 </div>
                             </div>
                             <div style={{ marginTop: 8 }}>
-                                <ChartWidget biomarker={c.name} patientUid={targetUid} />
+                                <ChartWidget biomarker={c.name} patientUid={urlPatientUid} />
                             </div>
                         </div>
                     ))
