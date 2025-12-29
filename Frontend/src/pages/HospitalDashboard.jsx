@@ -12,7 +12,7 @@ export default function HospitalDashboard() {
   const [loading, setLoading] = useState(false)
   const [patients, setPatients] = useState([])
 
-  // ================= LOAD APPROVED PATIENTS =================
+  //LOAD APPROVED PATIENTS 
   useEffect(() => {
     async function loadPatients() {
       try {
@@ -40,7 +40,7 @@ export default function HospitalDashboard() {
     if (user) loadPatients()
   }, [user])
 
-  // ================= REQUEST ACCESS =================
+  // REQUEST ACCESS 
   async function sendAccessRequest() {
     if (!patientEmail) {
       alert("Enter patient email")
@@ -73,7 +73,7 @@ export default function HospitalDashboard() {
     }
   }
 
-  // ================= FILTER =================
+  // FILTER
   const filteredPatients = patients.filter(p =>
     (p.name || "")
       .toLowerCase()
@@ -85,7 +85,6 @@ export default function HospitalDashboard() {
 
   return (
     <div>
-      {/* ================= HEADER ================= */}
       <div
         className="card"
         style={{
@@ -112,7 +111,6 @@ export default function HospitalDashboard() {
         Manage patients and request access
       </p>
 
-      {/* ================= SEARCH + ADD ================= */}
       <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
         <input
           className="input"
@@ -126,7 +124,6 @@ export default function HospitalDashboard() {
         </button>
       </div>
 
-      {/* ================= PATIENT LIST ================= */}
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {filteredPatients.length === 0 && (
           <div className="small-muted">
@@ -142,22 +139,53 @@ export default function HospitalDashboard() {
               padding: "12px 16px",
               display: "flex",
               justifyContent: "space-between",
-              cursor: "pointer",
+              alignItems: "center",
             }}
-            onClick={() =>
-              navigate(`/hospital/patient/${p.uid}`)
-            }
           >
             <div>
               <strong>{p.name || "Unnamed Patient"}</strong>
               <div className="small-muted">{p.email}</div>
             </div>
-            <span className="small-muted">View →</span>
+
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                className="btn-secondary"
+                onClick={() =>
+                  navigate(`/hospital/patient/${p.uid}/dashboard`, {
+                    state: { readOnly: true }
+                  })
+                }
+              >
+                Dashboard
+              </button>
+
+              <button
+                className="btn-secondary"
+                onClick={() =>
+                  navigate(`/hospital/patient/${p.uid}/profile`, {
+                    state: { readOnly: true }
+                  })
+                }
+              >
+                Profile
+              </button>
+
+              <button
+                className="btn-secondary"
+                onClick={() =>
+                  navigate(`/hospital/patient/${p.uid}/reports`, {
+                    state: { readOnly: true }
+                  })
+                }
+              >
+                Reports
+              </button>
+            </div>
           </div>
         ))}
+
       </div>
 
-      {/* ================= ADD PATIENT MODAL ================= */}
       {showModal && (
         <div className="modal-backdrop">
           <div className="card" style={{ maxWidth: 420 }}>

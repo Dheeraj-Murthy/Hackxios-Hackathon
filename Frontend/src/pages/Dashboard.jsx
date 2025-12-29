@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react'
 import AnalysisCard from '../components/AnalysisCard'
 import ChartWidget from '../components/ChartWidget'
 import { useAuth } from "../auth/useAuth"
+import { useParams, useLocation } from "react-router-dom"
+
 
 const DUMMY_CONCERNED = [
   { name: 'Vitamin D', value: '14 ng/mL' },
@@ -11,10 +13,15 @@ const DUMMY_CONCERNED = [
 
 export default function Dashboard() {
 
+  const { uid : patientUid } = useParams()
+  const isHospitalView = location.pathname.startsWith("/hospital/patient")
+  const readOnly = location.state?.readOnly === true
   const { user, loading } = useAuth()
   const [userData, setUserData] = useState(null)
   const [actionableSuggestions, setActionableSuggestions] = useState([])
   const [loadingSuggestions, setLoadingSuggestions] = useState(true)
+  console.log("Viewing patient UID:", patientUid)
+
 
 
   useEffect(() => {
@@ -23,8 +30,10 @@ export default function Dashboard() {
     const fetchUser = async () => {
       try {
         const token = await user.getIdToken()
-
-        const res = await fetch("http://localhost:8000/user/me", {
+        const url = isHospitalView
+          ? `http://localhost:8000/hospital/patient/${patientUid}`
+          : "http://localhost:8000/user/me"
+        const res = await fetch(url, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -43,31 +52,31 @@ export default function Dashboard() {
     fetchUser()
 
     const fetchActionableSuggestions = async () => {
-    try {
-      const token = await user.getIdToken()
+      try {
+        const token = await user.getIdToken()
 
-      const res = await fetch(
-        "http://localhost:8000/dashboard/actionable-suggestions",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      )
+        const res = await fetch(
+          "http://localhost:8000/dashboard/actionable-suggestions",
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        )
 
-      if (!res.ok) throw new Error("Failed to fetch actionable suggestions")
+        if (!res.ok) throw new Error("Failed to fetch actionable suggestions")
 
-      const data = await res.json()
-      setActionableSuggestions(data.actionable_suggestions || [])
+        const data = await res.json()
+        setActionableSuggestions(data.actionable_suggestions || [])
 
-    } catch (err) {
-      console.error("Failed to load actionable suggestions:", err)
-    } finally {
-      setLoadingSuggestions(false)
+      } catch (err) {
+        console.error("Failed to load actionable suggestions:", err)
+      } finally {
+        setLoadingSuggestions(false)
+      }
     }
-  }
 
-  fetchActionableSuggestions()
+    fetchActionableSuggestions()
   }, [user])
 
   if (loading) {
@@ -79,8 +88,11 @@ export default function Dashboard() {
       <div className="hero">
         <div className="hero-left" style={{ flex: 1 }}>
           <h2>
-            Welcome back{userData?.name ? `, ${userData.name}` : ""}!
+            {isHospitalView
+              ? `Patient Dashboard${userData?.name ? ` — ${userData.name}` : ""}`
+              : `Welcome back${userData?.name ? `, ${userData.name}` : ""}!`}
           </h2>
+
 
           <p className="small-muted">
             Based on your latest blood test, your Vitamin D is lower than the optimal range.
