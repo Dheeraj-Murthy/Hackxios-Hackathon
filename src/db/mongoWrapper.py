@@ -90,23 +90,28 @@ async def getMongo() -> Mongo_wrapper:
   if mongo is None:
     load_dotenv(".env")
 
-    mongo = Mongo_wrapper(
-      os.getenv("MONGO_URI"),
-      os.getenv("MONGO_DB")
-    )
+    uri = os.getenv("MONGO_URI")
+    db_name = os.getenv("MONGO_DB")
+    
+    if not uri or not db_name:
+      raise ValueError("MONGO_URI and MONGO_DB must be set in environment variables")
+    
+    mongo = Mongo_wrapper(uri, db_name)
     await mongo.connect()
 
   return mongo
 
 
-if __name__ == "__main__" :
-
+async def main():
   print("ping test for mongodb connection")
-  mongo = asyncio.run(getMongo())
+  mongo = await getMongo()
 
   try:
-    asyncio.run(mongo.client.admin.command('ping'))
+    await mongo.client.admin.command('ping')
     print("Pinged your deployment. You successfully connected to MongoDB!")
   except Exception as e:
     print(e)
+
+if __name__ == "__main__" :
+  asyncio.run(main())
 

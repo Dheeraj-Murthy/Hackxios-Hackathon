@@ -1,5 +1,6 @@
 import os
 import uuid
+import subprocess
 from typing import Optional, Tuple, Dict, Any
 from fastapi import UploadFile, HTTPException
 
@@ -148,34 +149,116 @@ class FileHandler:
         except Exception:
             return None
 
-    def extract_csv(self, input_file_path: str, output_file_path: str) -> Optional[dict]:
+    def extract_csv_with_ocr(self, input_file_path: str, output_file_path: str) -> Optional[dict]:
         """
-        Extract the data from the pdf file and then put it into a temporary csv file
+        Extract data from PDF using OCR and LLM-based CSV extraction
         """
         try:
-            import camelot as camelot
-            tables = camelot.read_pdf(
-                input_file_path,
-                flavor="stream",
-                pages="all",
-                table_areas=["0,630,612,190"],
-                columns=["255, 330, 480"],
-                row_tol=10,
-                edge_tol=500,
-                split_text=True,
-            )
+            import subprocess
+            import os
             
-            # Rewrite (truncate) the CSV file at the start
-            open(output_file_path, "w").close()
+            # Generate paths for OCR processing
+            base_name = os.path.splitext(input_file_path)[0]
+            ocr_pdf_path = f"{base_name}_ocr.pdf"
+            text_file_path = f"{base_name}_text.txt"
             
-            for t in tables:
-                df = t.df.replace("\n", " ", regex=True)
-                df.to_csv(output_file_path, mode="a", header=False, index=False)
-            
-            return {"success": True, "input": input_file_path, "output": output_file_path}
-        except Exception as e:
-            print(f"Error extracting CSV: {e}")
+            try:
+                # Step 1: Apply OCR to the PDF
+                print(f"Applying OCR to {input_file_path}")
+                ocr_result = subprocess.run([
+                    "ocrmypdf", 
+                    "--deskew",
+                    "--clean",
+                    "--skip-text",  # Don't OCR text that's already present
+                    input_file_path, 
+                    ocr_pdf_path
+                ], capture_output=True, text=True, timeout=120)
+                
+                if ocr_result.returncode != 0:
+                    print(f"OCR failed: {ocr_result.stderr}")
+                    # Try fallback: use original PDF without OCR
+                    print("Attempting to use original PDF without OCR...")
+                    ocr_pdf_path = input_file_path
+                
+                # Step 2: Extract text from OCR'd PDF
+                print(f"Extracting text from {ocr_pdf_path}")
+                text_result = subprocess.run([
+                    "pdftotext",
+                    "-layout",
+                    "-y", "190",  # Start from y=190 (top of table area)
+                    "-H", "440",  # Height: 630-190 = 440
+                    "-W", "612",  # Width of the page
+                    "-x", "0",   # Start from x=0 (left edge)
+                    ocr_pdf_path,
+                    text_file_path
+                ], capture_output=True, text=True, timeout=60)
+                
+                if text_result.returncode != 0:
+                    print(f"Text extraction failed: {text_result.stderr}")
+                    return None
+                
+                # Step 3: Read extracted text
+                if not os.path.exists(text_file_path):
+                    print("Text file was not created")
+                    return None
+                
+                with open(text_file_path, 'r', encoding='utf-8') as f:
+                    extracted_text = f.read()
+                
+                if not extracted_text.strip():
+                    print("No text extracted from PDF")
+                    return None
+                
+                # Step 4: Use LLM to extract structured CSV data
+                from src.llm_agent import LLMReportAgent
+                agent = LLMReportAgent()
+                csv_data = agent.extract_csv_from_text(extracted_text)
+                
+                if not csv_data:
+                    print("LLM failed to extract CSV data")
+                    return None
+                
+                # Step 5: Save CSV data to output file
+                import csv
+                with open(output_file_path, 'w', newline='', encoding='utf-8') as csvfile:
+                    writer = csv.writer(csvfile)
+                    writer.writerow(['test_name', 'value', 'unit', 'range'])  # Header
+                    writer.writerows(csv_data)
+                
+                return {
+                    "success": True, 
+                    "input": input_file_path, 
+                    "output": output_file_path,
+                    "extracted_text": extracted_text,
+                    "csv_data": csv_data
+                }
+                
+            finally:
+                # Cleanup temporary files (but not original PDF)
+                temp_files = [text_file_path]
+                # Only cleanup OCR file if it's different from original
+                if ocr_pdf_path != input_file_path:
+                    temp_files.append(ocr_pdf_path)
+                    
+                for temp_file in temp_files:
+                    if os.path.exists(temp_file):
+                        try:
+                            os.remove(temp_file)
+                        except Exception as e:
+                            print(f"Failed to cleanup {temp_file}: {e}")
+                            
+        except subprocess.TimeoutExpired:
+            print("OCR processing timed out")
             return None
+        except Exception as e:
+            print(f"Error in OCR extraction: {e}")
+            return None
+
+    def extract_csv(self, input_file_path: str, output_file_path: str) -> Optional[dict]:
+        """
+        Extract the data from the pdf file using OCR-based approach
+        """
+        return self.extract_csv_with_ocr(input_file_path, output_file_path)
         
     def parse_csv(self, input_file_name: str) -> Optional[dict]:
         """
@@ -232,13 +315,14 @@ class FileHandler:
             structured_data = []
             for row in df.itertuples(index=False):
                 # Handle NaN values by converting None to string
-                name = str(row.name) if pd.notna(row.name) else ""
-                value_and_remark = str(row.value_and_remark) if pd.notna(row.value_and_remark) else ""
-                range_str = str(row.range) if pd.notna(row.range) else ""
-                unit = str(row.unit) if pd.notna(row.unit) else ""
+                # Access tuple elements by index instead of name
+                name = str(row[0]) if pd.notna(row[0]) else ""
+                value_and_remark = str(row[1]) if pd.notna(row[1]) else ""
+                range_str = str(row[2]) if pd.notna(row[2]) else ""
+                unit = str(row[3]) if pd.notna(row[3]) else ""
                 
                 # Split value_and_remark into separate value and remark
-                value, remark = split_value_and_remark(row.value_and_remark)
+                value, remark = split_value_and_remark(value_and_remark)
                 
                 structured_data.append({
                     "name": name,
