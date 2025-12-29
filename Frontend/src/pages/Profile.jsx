@@ -1,10 +1,16 @@
 import React, { useState, useEffect } from 'react'
 import { sendEmailVerification } from "firebase/auth"
 import { useAuth } from "../auth/useAuth"
+import { useParams, useLocation } from "react-router-dom"
 
-export default function Profile() {
+
+export default function Profile({ readOnly = false }) {
 
   //Auth state
+  const { uid: patientUid } = useParams()
+  const isHospitalView = location.pathname.startsWith("/hospital/patient")
+
+
   const { user, loading } = useAuth()
 
   //Email Verification
@@ -43,12 +49,10 @@ export default function Profile() {
   })
 
   useEffect(() => {
-    if (!user) return
-    user.reload().then(() => {
-      setEmail(user.email || "")
-      setEmailVerified(user.emailVerified)
-    })
-  }, [user])
+    if (readOnly) {
+      setIsEditing(false)
+    }
+  }, [readOnly])
 
   useEffect(() => {
     localStorage.setItem("profile", JSON.stringify(profile))
@@ -56,12 +60,18 @@ export default function Profile() {
 
   useEffect(() => {
     if (!user) return
+    if (isHospitalView && !patientUid) return
 
     const fetchProfileFromBackend = async () => {
       try {
         const token = await user.getIdToken()
 
-        const res = await fetch("http://localhost:8000/user/me", {
+        const url = isHospitalView
+          ? `http://localhost:8000/hospital/patient/${patientUid}`
+          : "http://localhost:8000/user/me"
+
+        const res = await fetch(url, {
+
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -73,7 +83,9 @@ export default function Profile() {
 
         const data = await res.json()
 
-        // Hydrate profile correctly
+        setEmail(data.email || "")
+        setEmailVerified(true)
+
         setProfile({
           photo: data.BioData?.photo || "",
           name: data.name || "",
@@ -85,13 +97,14 @@ export default function Profile() {
           allergies: data.BioData?.allergies || "",
         })
 
+
       } catch (err) {
         console.error("PROFILE FETCH FAILED:", err)
       }
     }
 
     fetchProfileFromBackend()
-  }, [user])
+  }, [user, isHospitalView, patientUid])
 
 
   //Completion Wheel
@@ -125,7 +138,7 @@ export default function Profile() {
   if (!user) return <div className="card">You are not logged in.</div>
 
   function updateField(e) {
-    if (!isEditing) return
+    if (readOnly || !isEditing) return
     const { name, value } = e.target
     setProfile(prev => ({ ...prev, [name]: value }))
   }
@@ -168,6 +181,7 @@ export default function Profile() {
       localStorage.setItem("profile", JSON.stringify(profile))
 
       setIsEditing(false)
+
       alert("Profile saved to backend")
     } catch (err) {
       console.error("SAVE FAILED:", err)
@@ -290,9 +304,21 @@ export default function Profile() {
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <h3>Personal details</h3>
             {isEditing ? (
-              <button className="btn-primary" onClick={onSave}>Save</button>
+              <button
+                className="btn-primary"
+                disabled={readOnly}
+                onClick={onSave}
+              >
+                Save
+              </button>
             ) : (
-              <button className="btn-secondary" onClick={() => setIsEditing(true)}>Edit</button>
+              <button
+                className="btn-secondary"
+                disabled={readOnly}
+                onClick={() => setIsEditing(true)}
+              >
+                Edit
+              </button>
             )}
           </div>
 

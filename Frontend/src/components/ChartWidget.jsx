@@ -5,7 +5,7 @@ import { useAuth } from "../auth/useAuth"
 
 ChartJS.register(LineElement, CategoryScale, LinearScale, PointElement, Tooltip, Legend)
 
-export default function ChartWidget({biomarker}){
+export default function ChartWidget({biomarker, patientUid}){
   const { user } = useAuth()
   const [chartData, setChartData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -18,7 +18,10 @@ export default function ChartWidget({biomarker}){
       try {
         const token = await user.getIdToken()
         
-        const response = await fetch(`http://127.0.0.1:8000/api/draw_graph/${user.uid}/${encodeURIComponent(biomarker)}`, {
+        // Use patientUid if provided (hospital view), otherwise use current user's uid
+        const uid = patientUid || user.uid
+        
+        const response = await fetch(`http://127.0.0.1:8000/api/draw_graph/${uid}/${encodeURIComponent(biomarker)}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -71,7 +74,7 @@ export default function ChartWidget({biomarker}){
     }
 
     fetchChartData()
-  }, [user, biomarker])
+  }, [user, biomarker, patientUid])
 
   if (loading) {
     return (

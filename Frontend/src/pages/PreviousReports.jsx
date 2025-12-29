@@ -1,21 +1,30 @@
 import React, { useState, useEffect } from 'react'
 import AnalysisCard from '../components/AnalysisCard'
 import { useAuth } from "../auth/useAuth"
+import { useParams, useLocation } from "react-router-dom"
 
-export default function PreviousReports(){
+export default function PreviousReports() {
   const { user } = useAuth()
+  const { uid: patientUid } = useParams()
+  const location = useLocation()
+  const isHospitalView = location.pathname.startsWith("/hospital/patient")
+  const readOnly = location.state?.readOnly === true
+  
   const [reports, setReports] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
+  // Determine which patient UID to use
+  const targetUid = isHospitalView ? patientUid : user?.uid
+
   useEffect(() => {
-    if (!user) return
+    if (!targetUid) return
 
     const fetchReports = async () => {
       try {
         const token = await user.getIdToken()
         
-        const response = await fetch(`http://127.0.0.1:8000/api/reports/patient/${user.uid}`, {
+        const response = await fetch(`http://127.0.0.1:8000/api/reports/patient/${targetUid}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -71,7 +80,7 @@ export default function PreviousReports(){
     }
 
     fetchReports()
-  }, [user])
+  }, [user, targetUid])
 
   if (loading) {
     return (

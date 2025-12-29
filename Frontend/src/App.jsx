@@ -9,7 +9,11 @@ import UploadReport from './pages/UploadReport'
 import PreviousReports from './pages/PreviousReports'
 import ChatButton from './components/ChatButton'
 import HospitalDashboard from "./pages/HospitalDashboard"
-import HospitalPatient from "./pages/HospitalPatient"
+import HospitalPatientDashboard from './pages/PatientDashboard'
+import HospitalPatientProfile from './pages/PatientProfile'
+import HospitalPatientReports from './pages/PatientReports'
+import HospitalPatientLayout from "./pages/HospitalPatientLayout"
+import {  } from "module"; 
 import AccessRequests from "./pages/AccessRequests"
 import { signOut } from "firebase/auth"
 import { auth } from "./firebase/firebase"
@@ -87,7 +91,7 @@ function HospitalLayout() {
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element= {<Register />} />
+      <Route path="/" element={<Register />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
 
@@ -101,8 +105,14 @@ export default function App() {
 
       <Route element={<HospitalLayout />}>
         <Route path="/hospital" element={<HospitalDashboard />} />
-        <Route path="/hospital/patient/:id" element={<HospitalPatient />} />
+
+        <Route path="/hospital/patient/:uid" element={<HospitalPatientLayout />}>
+          <Route path="dashboard" element={<HospitalPatientDashboard />} />
+          <Route path="profile" element={<HospitalPatientProfile />} />
+          <Route path="reports" element={<HospitalPatientReports />} />
+        </Route>
       </Route>
+
 
     </Routes>
   )
