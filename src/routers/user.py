@@ -57,7 +57,8 @@ async def read_me(current_user=Depends(get_current_user)):
         "email": user["email"],
         "user_type": user["user_type"],
         "name": user.get("name", ""),
-        "BioData": user.get("BioData", {})
+        "BioData": user.get("BioData", {}),
+        "Favorites": user.get("Favorites", [])
     }
 
 # USER CREATION (ONBOARD)
@@ -145,6 +146,109 @@ async def update_me(
 
     return {"status": "updated"}
 
+
+# FAVORITES MANAGEMENT
+@router.post("/user/favorites")
+async def add_favorite_marker(
+    data: dict,
+    current_user=Depends(get_current_user)
+):
+    import re
+    
+    mongo = await getMongo()
+    
+    user = await mongo.find_one(
+        "Users",
+        {"uid": current_user["uid"], "user_type": "patient"}
+    )
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="Patient user not found")
+    
+    marker = data.get("marker", "").strip()
+    if not marker:
+        raise HTTPException(status_code=400, detail="Marker name is required")
+    
+    # Sanitize marker: convert to title case, remove extra spaces, normalize characters
+    marker = re.sub(r'\s+', ' ', marker.strip())  # Replace multiple spaces with single space
+    marker = marker.title()  # Convert to title case (e.g., "hemoglobin a1c" -> "Hemoglobin A1c")
+    marker = re.sub(r'[^a-zA-Z0-9\s\-_()]', '', marker)  # Remove special characters except spaces, hyphens, underscores, parentheses
+    marker = marker.strip()  # Remove leading/trailing spaces again
+    
+    if not marker:
+        raise HTTPException(status_code=400, detail="Invalid marker name after sanitization")
+    
+    print(f"Adding marker: '{marker}' for user: {current_user['uid']}")
+    
+    # Add to favorites if not already present (case-insensitive check)
+    current_favorites = user.get("Favorites", [])
+    normalized_marker = marker.lower()
+    existing_normalized = [fav.lower() for fav in current_favorites]
+    
+    if normalized_marker not in existing_normalized:
+        result = await mongo.update_one(
+            "Users",
+            {"uid": current_user["uid"]},
+            {"$addToSet": {"Favorites": marker}},
+            raw=True
+        )
+        print(f"MongoDB update result: {result}")
+    
+    # Return updated favorites
+    updated_user = await mongo.find_one("Users", {"uid": current_user["uid"]})
+    favorites = updated_user.get("Favorites", []) if updated_user else current_favorites
+    print(f"Updated favorites: {favorites}")
+    
+    return {"favorites": favorites}
+
+
+@router.delete("/user/favorites")
+async def remove_favorite_marker(
+    data: dict,
+    current_user=Depends(get_current_user)
+):
+    import re
+    
+    mongo = await getMongo()
+    
+    user = await mongo.find_one(
+        "Users",
+        {"uid": current_user["uid"], "user_type": "patient"}
+    )
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="Patient user not found")
+    
+    marker = data.get("marker", "").strip()
+    if not marker:
+        raise HTTPException(status_code=400, detail="Marker name is required")
+    
+    # Sanitize marker the same way as in add
+    marker = re.sub(r'\s+', ' ', marker.strip())
+    marker = marker.title()
+    marker = re.sub(r'[^a-zA-Z0-9\s\-_()]', '', marker)
+    marker = marker.strip()
+    
+    if not marker:
+        raise HTTPException(status_code=400, detail="Invalid marker name after sanitization")
+    
+    print(f"Removing marker: '{marker}' for user: {current_user['uid']}")
+    
+    # Remove from favorites
+    result = await mongo.update_one(
+        "Users",
+        {"uid": current_user["uid"]},
+        {"$pull": {"Favorites": marker}},
+        raw=True
+    )
+    print(f"MongoDB delete result: {result}")
+    
+    # Return updated favorites
+    updated_user = await mongo.find_one("Users", {"uid": current_user["uid"]})
+    favorites = updated_user.get("Favorites", []) if updated_user else []
+    print(f"Updated favorites after removal: {favorites}")
+    
+    return {"favorites": favorites}
 
 
 # GET USER BY OBJECT ID

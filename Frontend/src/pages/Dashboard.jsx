@@ -15,8 +15,10 @@ export default function Dashboard({ readOnly: propReadOnly, hospitalView: propHo
     const [actionableSuggestions, setActionableSuggestions] = useState([])
     const [loadingSuggestions, setLoadingSuggestions] = useState(true)
     const [concernedBiomarkers, setConcernedBiomarkers] = useState([])
+    const [favoriteMarkers, setFavoriteMarkers] = useState([])
     const [latestAnalysis, setLatestAnalysis] = useState(null)
     const [loadingAnalysis, setLoadingAnalysis] = useState(true)
+    const [loadingFavorites, setLoadingFavorites] = useState(true)
 
     // Determine which patient UID to use
     const targetUid = isHospitalView ? (propPatientUid || urlPatientUid) : user?.uid
@@ -43,6 +45,26 @@ export default function Dashboard({ readOnly: propReadOnly, hospitalView: propHo
                 if (!userRes.ok) throw new Error("Failed to fetch user data")
                 const userData = await userRes.json()
                 setUserData(userData)
+
+                // Fetch favorite markers (only for patient view)
+                if (!isHospitalView) {
+                    try {
+                        const favoritesRes = await fetch("http://localhost:8000/user/favorites", {
+                            headers: {
+                                Authorization: `Bearer ${token}`,
+                            },
+                        })
+
+                        if (favoritesRes.ok) {
+                            const favoritesData = await favoritesRes.json()
+                            setFavoriteMarkers(favoritesData.favorites || [])
+                        }
+                    } catch (err) {
+                        console.error("Failed to fetch favorite markers:", err)
+                    } finally {
+                        setLoadingFavorites(false)
+                    }
+                }
 
                 // Fetch actionable suggestions (only for patient view)
                 if (!isHospitalView) {
@@ -141,6 +163,39 @@ export default function Dashboard({ readOnly: propReadOnly, hospitalView: propHo
         fetchDashboardData()
     }, [user, targetUid, isHospitalView])
 
+    async function addMarkerToFavorites(markerName) {
+        try {
+            const token = await user.getIdToken()
+            
+            console.log("Adding marker to favorites from dashboard:", markerName)
+            
+            const res = await fetch("http://localhost:8000/user/favorites", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`,
+                },
+                body: JSON.stringify({ marker: markerName }),
+            })
+
+            console.log("Dashboard add response status:", res.status)
+
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}))
+                console.error("Error response:", errorData)
+                throw new Error(errorData.detail || `Failed to add favorite marker (${res.status})`)
+            }
+            
+            const data = await res.json()
+            console.log("Dashboard add success:", data)
+            setFavoriteMarkers(data.favorites || [])
+            alert(`${markerName} added to favorites!`)
+        } catch (err) {
+            console.error("Failed to add favorite marker:", err)
+            alert(`Failed to add marker to favorites: ${err.message}`)
+        }
+    }
+
     if (authLoading) {
         return <div className="card">Loading dashboard...</div>
     }
@@ -164,28 +219,77 @@ export default function Dashboard({ readOnly: propReadOnly, hospitalView: propHo
                 </div>
             </div>
 
-            <h3>Concern Biomarkers</h3>
+            <h3>Favorite Concern Markers</h3>
             <div className="concern-row">
-                {loadingAnalysis ? (
-                    <div className="card">Loading biomarkers...</div>
-                ) : concernedBiomarkers.length === 0 ? (
-                    <div className="card">No biomarkers to display. Upload a report to see your health metrics.</div>
+                {loadingFavorites ? (
+                    <div className="card">Loading favorite markers...</div>
+                ) : favoriteMarkers.length === 0 ? (
+                    <div className="card">No favorite markers yet. Add markers in your profile or click on concerned biomarkers below to add them to favorites.</div>
                 ) : (
-                    concernedBiomarkers.map((c) => (
-                        <div key={c.name} className="card concern-card">
+                    favoriteMarkers.map((marker) => (
+                        <div key={marker} className="card concern-card">
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div>
-                                    <strong>{c.name}</strong>
-                                    <div className="small-muted">{c.value} {c.unit}</div>
+                                    <strong>{marker}</strong>
+                                    <div className="small-muted">Favorite marker</div>
                                 </div>
                             </div>
                             <div style={{ marginTop: 8 }}>
-                                <ChartWidget biomarker={c.name} patientUid={urlPatientUid} />
+                                <ChartWidget biomarker={marker} patientUid={urlPatientUid} />
                             </div>
                         </div>
                     ))
                 )}
             </div>
+
+            {!isHospitalView && (
+                <>
+                    <h3>Current Concern Biomarkers</h3>
+                    <div className="concern-row">
+                        {loadingAnalysis ? (
+                            <div className="card">Loading biomarkers...</div>
+                        ) : concernedBiomarkers.length === 0 ? (
+                            <div className="card">No biomarkers to display. Upload a report to see your health metrics.</div>
+                        ) : (
+                            concernedBiomarkers.map((c) => (
+                                <div 
+                                    key={c.name} 
+                                    className="card concern-card" 
+                                    style={{ cursor: 'pointer', position: 'relative' }}
+                                    onClick={() => {
+                                        if (!favoriteMarkers.some(fav => fav.toLowerCase() === c.name.toLowerCase())) {
+                                            if (confirm(`Add ${c.name} to your favorite markers?`)) {
+                                                addMarkerToFavorites(c.name)
+                                            }
+                                        }
+                                    }}
+                                    title={favoriteMarkers.some(fav => fav.toLowerCase() === c.name.toLowerCase()) ? "Already in favorites" : "Click to add to favorites"}
+                                >
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <div>
+                                            <strong>{c.name}</strong>
+                                            <div className="small-muted">{c.value} {c.unit}</div>
+                                            {favoriteMarkers.some(fav => fav.toLowerCase() === c.name.toLowerCase()) && (
+                                                <div style={{ fontSize: '11px', color: '#16a34a', marginTop: 2 }}>
+                                                    ✓ In favorites
+                                                </div>
+                                            )}
+                                        </div>
+                                        {!favoriteMarkers.some(fav => fav.toLowerCase() === c.name.toLowerCase()) && (
+                                            <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                                                Click to add
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div style={{ marginTop: 8 }}>
+                                        <ChartWidget biomarker={c.name} patientUid={urlPatientUid} />
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </>
+            )}
 
             <div className="grid">
                 {/* Only show actionable suggestions for patient view */}

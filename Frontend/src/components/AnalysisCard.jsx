@@ -1,7 +1,7 @@
 import React from 'react'
-import { CheckCircle } from 'lucide-react'
+import { CheckCircle, Plus } from 'lucide-react'
 
-export default function AnalysisCard({analysis, compact=false}){
+export default function AnalysisCard({analysis, compact=false, onAddFavorite, favoriteMarkers = []}){
   if(!analysis) return null
   
   // Ensure analysis has required properties with fallbacks
@@ -60,14 +60,35 @@ export default function AnalysisCard({analysis, compact=false}){
           </div>
         )}
 
-        {concern_options && concern_options.length > 0 && (
-          <div className="analysis-section">
-            <h4>Concern options</h4>
-            <div className="concern-chips">
-              {concern_options.map((c,i)=>(<span key={i} className="chip">{c}</span>))}
-            </div>
-          </div>
-        )}
+         {concern_options && concern_options.length > 0 && (
+           <div className="analysis-section">
+             <h4>Concern options</h4>
+             <div className="concern-chips">
+               {concern_options.map((c,i)=> {
+                 const isFavorite = favoriteMarkers.some(fav => fav.toLowerCase() === c.toLowerCase())
+                 return (
+                   <span 
+                     key={i} 
+                     className={`chip ${isFavorite ? 'chip-favorite' : 'chip-clickable'}`}
+                     onClick={() => !isFavorite && onAddFavorite && onAddFavorite(c)}
+                     title={isFavorite ? "Already in favorites" : "Click to add to favorites"}
+                     style={{
+                       cursor: isFavorite ? 'default' : 'pointer',
+                       backgroundColor: isFavorite ? '#16a34a' : undefined,
+                       color: isFavorite ? 'white' : undefined,
+                       display: 'inline-flex',
+                       alignItems: 'center',
+                       gap: '4px'
+                     }}
+                   >
+                     {isFavorite ? '✓' : <Plus size={12} />}
+                     {c}
+                   </span>
+                 )
+               })}
+             </div>
+           </div>
+         )}
       </div>
 
       {!compact && (

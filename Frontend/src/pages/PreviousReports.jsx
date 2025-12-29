@@ -14,6 +14,7 @@ export default function PreviousReports({ readOnly, hospitalView, patientUid: pr
   const [reports, setReports] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const [favoriteMarkers, setFavoriteMarkers] = useState([])
 
   // Determine which patient UID to use
   const targetUid = isHospitalView ? (propPatientUid || urlPatientUid) : user?.uid
@@ -21,6 +22,30 @@ export default function PreviousReports({ readOnly, hospitalView, patientUid: pr
   useEffect(() => {
     // Wait for auth to load and targetUid to be available
     if (authLoading || !targetUid || (!user && !isHospitalView)) return
+
+    const fetchData = async () => {
+      // Fetch favorite markers first (only for patient view)
+      if (!isHospitalView && user) {
+        try {
+          const token = await user.getIdToken()
+          const favoritesRes = await fetch("http://localhost:8000/user/favorites", {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          })
+
+          if (favoritesRes.ok) {
+            const favoritesData = await favoritesRes.json()
+            setFavoriteMarkers(favoritesData.favorites || [])
+          }
+        } catch (err) {
+          console.error("Failed to fetch favorite markers:", err)
+        }
+      }
+
+      // Then fetch reports
+      await fetchReports()
+    }
 
     const fetchReports = async () => {
       try {
@@ -84,8 +109,43 @@ export default function PreviousReports({ readOnly, hospitalView, patientUid: pr
       }
     }
 
-    fetchReports()
-  }, [user, targetUid])
+    fetchData()
+  }, [user, targetUid, isHospitalView])
+
+  async function addMarkerToFavorites(markerName) {
+    if (isHospitalView) return // Don't allow in hospital view
+    
+    try {
+      const token = await user.getIdToken()
+      
+      console.log("Adding marker to favorites from reports:", markerName)
+      
+      const res = await fetch("http://localhost:8000/user/favorites", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({ marker: markerName }),
+      })
+
+      console.log("Reports add response status:", res.status)
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        console.error("Error response:", errorData)
+        throw new Error(errorData.detail || `Failed to add favorite marker (${res.status})`)
+      }
+      
+      const data = await res.json()
+      console.log("Reports add success:", data)
+      setFavoriteMarkers(data.favorites || [])
+      alert(`${markerName} added to favorites!`)
+    } catch (err) {
+      console.error("Failed to add favorite marker:", err)
+      alert(`Failed to add marker to favorites: ${err.message}`)
+    }
+  }
 
   if (loading) {
     return (
@@ -122,7 +182,14 @@ export default function PreviousReports({ readOnly, hospitalView, patientUid: pr
                 {r.analysis?.interpretation ? r.analysis.interpretation.slice(0, 60) + "..." : "No analysis available"}
               </div>
             </div>
-            {r.analysis && <AnalysisCard analysis={r.analysis} compact />}
+            {r.analysis && (
+              <AnalysisCard 
+                analysis={r.analysis} 
+                compact 
+                favoriteMarkers={favoriteMarkers}
+                onAddFavorite={addMarkerToFavorites}
+              />
+            )}
             {!r.analysis && (
               <div className="small-muted" style={{marginTop: 12}}>
                 No analysis available for this report

@@ -21,6 +21,11 @@ export default function Profile({ readOnly: propReadOnly = false, hospitalView: 
 
     const [isEditing, setIsEditing] = useState(false)
 
+    //Favorite Markers
+    const [favoriteMarkers, setFavoriteMarkers] = useState([])
+    const [newMarker, setNewMarker] = useState("")
+    const [loadingMarkers, setLoadingMarkers] = useState(true)
+
     //Profile
     const [profile, setProfile] = useState(() => {
         try {
@@ -104,6 +109,9 @@ export default function Profile({ readOnly: propReadOnly = false, hospitalView: 
                     allergies: data.BioData?.allergies || "",
                 })
 
+                // Fetch favorite markers
+                setFavoriteMarkers(data.Favorites || [])
+                setLoadingMarkers(false)
 
             } catch (err) {
                 console.error("PROFILE FETCH FAILED:", err)
@@ -194,6 +202,79 @@ export default function Profile({ readOnly: propReadOnly = false, hospitalView: 
             console.error("SAVE FAILED:", err)
             alert("Failed to save profile")
         }
+    }
+
+    async function addFavoriteMarker(markerName) {
+        if (!markerName.trim()) return
+        
+        try {
+            const token = await user.getIdToken()
+            
+            console.log("Adding favorite marker:", markerName)
+            
+            const res = await fetch("http://localhost:8000/user/favorites", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`,
+                },
+                body: JSON.stringify({ marker: markerName.trim() }),
+            })
+
+            console.log("Response status:", res.status)
+            
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}))
+                console.error("Error response:", errorData)
+                throw new Error(errorData.detail || `Failed to add favorite marker (${res.status})`)
+            }
+            
+            const data = await res.json()
+            console.log("Success response:", data)
+            setFavoriteMarkers(data.favorites || [])
+            setNewMarker("")
+            alert("Marker added to favorites!")
+        } catch (err) {
+            console.error("Failed to add favorite marker:", err)
+            alert(`Failed to add favorite marker: ${err.message}`)
+        }
+    }
+
+    async function removeFavoriteMarker(markerName) {
+        try {
+            const token = await user.getIdToken()
+            
+            console.log("Removing favorite marker:", markerName)
+            
+            const res = await fetch("http://localhost:8000/user/favorites", {
+                method: "DELETE",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`,
+                },
+                body: JSON.stringify({ marker: markerName }),
+            })
+
+            console.log("Remove response status:", res.status)
+
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}))
+                console.error("Error response:", errorData)
+                throw new Error(errorData.detail || `Failed to remove favorite marker (${res.status})`)
+            }
+            
+            const data = await res.json()
+            console.log("Remove success response:", data)
+            setFavoriteMarkers(data.favorites || [])
+        } catch (err) {
+            console.error("Failed to remove favorite marker:", err)
+            alert(`Failed to remove favorite marker: ${err.message}`)
+        }
+    }
+
+    function handleAddMarker(e) {
+        e.preventDefault()
+        addFavoriteMarker(newMarker)
     }
 
     //UI
@@ -304,6 +385,77 @@ export default function Profile({ readOnly: propReadOnly = false, hospitalView: 
                         <div className="stat"><strong>BMI</strong><div>{bmi}</div></div>
                         <div className="stat"><strong>Age</strong><div>{profile.age || "—"}</div></div>
                         <div className="stat"><strong>Weight</strong><div>{profile.weight || "—"} kg</div></div>
+                    </div>
+
+                    {/* Favorite Markers Section */}
+                    <div style={{ marginTop: 24 }}>
+                        <h4 style={{ marginBottom: 12, fontSize: 16 }}>Favorite Concern Markers</h4>
+                        {loadingMarkers ? (
+                            <p className="small-muted">Loading markers...</p>
+                        ) : (
+                            <>
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+                                    {favoriteMarkers.length === 0 ? (
+                                        <p className="small-muted">No favorite markers yet. Add markers to track them in your dashboard.</p>
+                                    ) : (
+                                        favoriteMarkers.map((marker, index) => (
+                                            <div
+                                                key={index}
+                                                style={{
+                                                    display: "inline-flex",
+                                                    alignItems: "center",
+                                                    gap: 6,
+                                                    padding: "4px 8px",
+                                                    backgroundColor: "#e5e7eb",
+                                                    borderRadius: "16px",
+                                                    fontSize: "12px",
+                                                    color: "#374151"
+                                                }}
+                                            >
+                                                {marker}
+                                                {!readOnly && (
+                                                    <button
+                                                        onClick={() => removeFavoriteMarker(marker)}
+                                                        style={{
+                                                            background: "none",
+                                                            border: "none",
+                                                            color: "#ef4444",
+                                                            cursor: "pointer",
+                                                            padding: "0",
+                                                            fontSize: "14px",
+                                                            lineHeight: "1"
+                                                        }}
+                                                        title="Remove marker"
+                                                    >
+                                                        ×
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+
+                                {!readOnly && (
+                                    <form onSubmit={handleAddMarker} style={{ display: "flex", gap: 8 }}>
+                                        <input
+                                            type="text"
+                                            value={newMarker}
+                                            onChange={(e) => setNewMarker(e.target.value)}
+                                            placeholder="Add new marker..."
+                                            className="input"
+                                            style={{ flex: 1, fontSize: "12px", padding: "6px 8px" }}
+                                        />
+                                        <button
+                                            type="submit"
+                                            className="btn-primary"
+                                            style={{ padding: "6px 12px", fontSize: "12px" }}
+                                        >
+                                            Add
+                                        </button>
+                                    </form>
+                                )}
+                            </>
+                        )}
                     </div>
                 </div>
 

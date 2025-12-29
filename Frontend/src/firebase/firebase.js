@@ -10,6 +10,17 @@ const firebaseConfig = {
   appId: "1:295050118112:web:582d42492681c977d16185"
 }
 
-const app = initializeApp(firebaseConfig)
-export const auth = getAuth(app)
-setPersistence(auth, browserLocalPersistence)
+let app
+let auth
+
+try {
+  app = initializeApp(firebaseConfig)
+  auth = getAuth(app)
+  setPersistence(auth, browserLocalPersistence)
+  console.log("Firebase initialized successfully")
+} catch (error) {
+  console.error("Firebase initialization error:", error)
+  throw error
+}
+
+export { auth }
