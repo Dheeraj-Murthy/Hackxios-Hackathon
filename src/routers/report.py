@@ -12,6 +12,7 @@ from src.db.mongoWrapper import getMongo
 from src.schemas import ReportModel, ProcessedAtUpdate, AttributeUpdateByName, AttributeCreate, AttributeDeleteByName
 from src.utils.file_handler import FileHandler
 from src.llm_agent import LLMReportAgent
+from src.auth.dependencies import get_current_user
 
 router = APIRouter(prefix="/api")
 
@@ -42,12 +43,14 @@ async def test_db():
 async def _upload_and_parse_report(
     file: UploadFile, 
     patient_id: Optional[str], 
-    report_id: Optional[str]
+    report_id: Optional[str],
+    current_user: Optional[dict] = None
 ) -> dict:
     """Internal function to handle file upload and parsing"""
     file_path = None
     csv_file_path = None
     processed_csv_path = None
+    file_id = None
     
     try:
         # Save uploaded file
@@ -55,7 +58,10 @@ async def _upload_and_parse_report(
         
         # Generate patient ID if not provided or empty
         if not patient_id or patient_id.strip() == "":
-            patient_id = f"patient_{file_id[:8]}"
+            if current_user and 'uid' in current_user:
+                patient_id = current_user['uid']
+            else:
+                patient_id = f"patient_{file_id[:8]}"
         
         # Generate report ID if not provided or empty
         if not report_id or report_id.strip() == "":
@@ -123,7 +129,7 @@ async def _upload_and_parse_report(
         
         # Additional cleanup: remove any processed CSV files that might be left behind
         # Use pattern matching to clean up any _processed.csv files related to this file_id
-        if 'file_id' in locals():
+        if file_id:
             import glob
             processed_pattern = os.path.join(os.path.dirname(csv_file_path or ""), f"{file_id}_*_processed.csv")
             for processed_file in glob.glob(processed_pattern):
@@ -196,7 +202,8 @@ async def _update_report_with_llm(report_id: str, llm_report_id: str):
 async def upload_report(
     file: UploadFile = File(...), 
     patient_id: Optional[str] = Form(None), 
-    report_id: Optional[str] = Form(None)
+    report_id: Optional[str] = Form(None),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Upload and process a medical report PDF
@@ -234,6 +241,7 @@ async def upload_report(
         
         # Generate patient ID if not provided or empty
         if not patient_id or patient_id.strip() == "":
+            # Note: This function doesn't have access to current_user, so use fallback
             patient_id = f"patient_{file_id[:8]}"
         
         # Generate report ID if not provided or empty
@@ -294,14 +302,15 @@ async def upload_and_analyze(
     file: UploadFile = File(...),
     patient_id: Optional[str] = Form(None),
     report_id: Optional[str] = Form(None),
-    auto_analyze: bool = Form(True)  # Allow disable for testing
+    auto_analyze: bool = Form(True),  # Allow disable for testing
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Upload, process, and automatically analyze a medical report PDF in one atomic operation
     """
     try:
         # Step 1: Upload and parse the report
-        upload_result = await _upload_and_parse_report(file, patient_id, report_id)
+        upload_result = await _upload_and_parse_report(file, patient_id, report_id, current_user)
         
         if not auto_analyze:
             return {
@@ -348,22 +357,10 @@ async def upload_and_analyze(
         }
         
     except HTTPException:
-        # Clean up file on HTTP errors
-        if 'file_path' in locals() and file_path is not None:
-            file_handler.delete_file(file_path)
-        if 'processed_csv_path' in locals() and processed_csv_path and os.path.exists(processed_csv_path):
-            os.remove(processed_csv_path)
-        if 'csv_file_path' in locals() and csv_file_path and os.path.exists(csv_file_path):
-            os.remove(csv_file_path)
+        # Cleanup is handled in the helper function
         raise
     except Exception as e:
-        if 'processed_csv_path' in locals() and processed_csv_path and os.path.exists(processed_csv_path):
-            os.remove(processed_csv_path)
-        # Clean up file on general errors
-        if 'file_path' in locals() and file_path is not None:
-            file_handler.delete_file(file_path)
-        if 'csv_file_path' in locals() and csv_file_path and os.path.exists(csv_file_path):
-            os.remove(csv_file_path)
+        # Cleanup is handled in the helper function
         raise HTTPException(status_code=500, detail=f"Error processing report: {str(e)}")
 
 
