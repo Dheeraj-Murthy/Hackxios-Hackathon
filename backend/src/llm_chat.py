@@ -1,4 +1,4 @@
-from llm_agent import LLMReportAgent
+from src.llm_agent import LLMReportAgent
 import re
 
 
@@ -229,8 +229,10 @@ def build_query_prompt (task_str,context):
     {context['conversation_history']}
 
     Context:
-    - Medical Report Data and Suggestion Data: 
-    {context['recent_reports']}
+    - Medical Report Data 
+    {context['medical_report']}
+    - Suggestion list
+    {context['suggestion_list']}
 
     User Question:{context['current_message']}
 
@@ -284,7 +286,7 @@ def generate_chat_response (context):
   prompt = build_query_prompt(task_str, context)
   query_resolve_llm = LLMReportAgent(system_instruction=system_prompt)
   final_response = query_resolve_llm.model.generate_content(prompt)
-  return final_response
+  return final_response.text
 
 if __name__ == "__main__":
   context1 = {

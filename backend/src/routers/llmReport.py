@@ -111,3 +111,13 @@ async def upload_report(report: ReportModel):
 
   return {"llm_report_id": llm_inserted, "analysis": analysis}
 
+@router.get("/LLMReportsPatient/{patient_id}")
+async def get_report(patient_id: str):
+  mongo = await getMongo()
+  reports = await mongo.find_many(
+    "LLMReports", 
+    {"patient_id": patient_id},
+    limit=10)
+  # Sort by time descending (newest first) after fetching
+  sorted_reports = sorted(reports, key=lambda x: x.get("time", ""), reverse=True)
+  return json.loads(dumps(sorted_reports)) 

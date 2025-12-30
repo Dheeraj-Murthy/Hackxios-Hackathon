@@ -31,11 +31,3 @@ app.include_router(dashboard.router)
 app.include_router(access.router)
 app.include_router(chat.router)
 
-@app.get("/test-comment")
-async def test_comment():
-    mongo = await getMongo()
-    comment = await mongo.find_one(
-        "comments", {"_id": ObjectId("5a9427648b0beebeb69579e7")}
-    )
-    return json.loads(dumps(comment))
-

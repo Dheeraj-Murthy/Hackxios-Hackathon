@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Send, Bot, User, Loader2, MessageCircle, Trash2 } from 'lucide-react'
 import { useAuth } from '../auth/useAuth'
+import ReactMarkdown from 'react-markdown'
 
 export default function AIChatbot() {
   const { user } = useAuth()
@@ -214,7 +215,13 @@ export default function AIChatbot() {
                     whiteSpace: 'pre-wrap'
                   }}
                 >
-                  {msg.text}
+                  {msg.from === 'bot' ? (
+                    <div className="markdown-content">
+                      <ReactMarkdown>{msg.text}</ReactMarkdown>
+                    </div>
+                  ) : (
+                    msg.text
+                  )}
                 </div>
                 <div 
                   style={{ 
@@ -400,6 +407,77 @@ export default function AIChatbot() {
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
+        }
+        .markdown-content {
+          font-size: 14px;
+        }
+        .markdown-content p {
+          margin: 0 0 8px 0;
+        }
+        .markdown-content p:last-child {
+          margin-bottom: 0;
+        }
+        .markdown-content ul, .markdown-content ol {
+          margin: 8px 0;
+          padding-left: 20px;
+        }
+        .markdown-content li {
+          margin: 4px 0;
+        }
+        .markdown-content h1, .markdown-content h2, .markdown-content h3, 
+        .markdown-content h4, .markdown-content h5, .markdown-content h6 {
+          margin: 12px 0 8px 0;
+          font-weight: 600;
+        }
+        .markdown-content h1 { font-size: 1.4em; }
+        .markdown-content h2 { font-size: 1.25em; }
+        .markdown-content h3 { font-size: 1.1em; }
+        .markdown-content code {
+          background: #e2e8f0;
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-size: 13px;
+          font-family: 'Monaco', 'Menlo', monospace;
+        }
+        .markdown-content pre {
+          background: #1e293b;
+          color: #e2e8f0;
+          padding: 12px;
+          border-radius: 8px;
+          overflow-x: auto;
+          margin: 8px 0;
+        }
+        .markdown-content pre code {
+          background: transparent;
+          padding: 0;
+          color: inherit;
+        }
+        .markdown-content blockquote {
+          border-left: 3px solid #0ea5a4;
+          margin: 8px 0;
+          padding-left: 12px;
+          color: #64748b;
+        }
+        .markdown-content strong {
+          font-weight: 600;
+        }
+        .markdown-content a {
+          color: #0ea5a4;
+          text-decoration: underline;
+        }
+        .markdown-content table {
+          border-collapse: collapse;
+          margin: 8px 0;
+          width: 100%;
+        }
+        .markdown-content th, .markdown-content td {
+          border: 1px solid #e2e8f0;
+          padding: 8px;
+          text-align: left;
+        }
+        .markdown-content th {
+          background: #f8fafc;
+          font-weight: 600;
         }
       `}</style>
     </div>
