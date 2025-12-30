@@ -224,7 +224,6 @@ Keep the response concise and clear.
 
 '''
 
-def build_query_prompt(task_str, context):
 def build_query_prompt (task_str,context):
   return f'''
     Conversation History:
