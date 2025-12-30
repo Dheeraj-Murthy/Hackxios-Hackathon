@@ -18,7 +18,7 @@ export default function HospitalPatientDashboard() {
         const token = await user.getIdToken()
 
         const res = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/hospital/patient/${uid}`,
+          `${import.meta.env.VITE_BACKEND_URL}/api/hospital/patient/${uid}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,

@@ -21,7 +21,7 @@ export default function HospitalPatient() {
         const token = await user.getIdToken()
 
         // First, get all approved patients to find the one with matching UID
-        const patientsRes = await fetch(`${import.meta.env.VITE_BACKEND_URL}/hospital/patients`, {
+        const patientsRes = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/hospital/patients`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },

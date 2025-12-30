@@ -7,7 +7,7 @@ import json
 from src.auth.dependencies import get_current_user
 from src.schemas import OnboardRequest
 
-router = APIRouter()
+router = APIRouter(prefix="/api")
 
 
 # AUTH CHECK (ROLE + UID)
@@ -245,11 +245,16 @@ async def remove_favorite_marker(
     
     print(f"Removing marker: '{marker}' for user: {current_user['uid']}")
     
-    # Remove from favorites
+    # Remove from favorites (case-insensitive matching)
+    # First, get current favorites and remove manually
+    user_favorites = user.get("Favorites", [])
+    normalized_marker = marker.lower()
+    updated_favorites = [fav for fav in user_favorites if fav.lower() != normalized_marker]
+    
     result = await mongo.update_one(
         "Users",
         {"uid": current_user["uid"]},
-        {"$pull": {"Favorites": marker}},
+        {"$set": {"Favorites": updated_favorites}},
         raw=True
     )
     print(f"MongoDB delete result: {result}")
@@ -262,27 +267,13 @@ async def remove_favorite_marker(
     return {"favorites": favorites}
 
 
-# GET CURRENT USER FAVORITES
+# GET USER FAVORITES
 @router.get("/user/favorites")
-async def get_favorite_markers(current_user=Depends(get_current_user)):
-    """Return the list of favorite markers for the current patient user."""
-    from fastapi import HTTPException
-
-    if current_user is None:
-        # If dependency returned None (e.g. preflight or unauthenticated), deny access
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
+async def get_user_favorites(current_user=Depends(get_current_user)):
     mongo = await getMongo()
-
-    user = await mongo.find_one(
-        "Users",
-        {"uid": current_user["uid"], "user_type": "patient"}
-    )
-
-    if not user:
-        raise HTTPException(status_code=404, detail="Patient user not found")
-
-    return {"favorites": user.get("Favorites", [])}
+    user = await mongo.find_one("Users", {"uid": current_user["uid"]})
+    favorites = user.get("Favorites", []) if user else []
+    return {"favorites": favorites}
 
 
 # GET USER BY OBJECT ID
@@ -387,6 +378,5 @@ async def get_patient_for_hospital(
         "email": patient.get("email"),
         "name": patient.get("name", ""),
         "BioData": patient.get("BioData", {}),
-        "Reports": patient.get("Reports", []),
-        "Favorites": patient.get("Favorites", [])
+        "Reports": patient.get("Reports", [])
     }

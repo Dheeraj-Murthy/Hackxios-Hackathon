@@ -3,7 +3,7 @@ import './AuthTiles.css'
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth'
 import { auth } from '../firebase/firebase'
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
+
 
 export default function AuthTiles({ initial = 'login' }) {
   const [tab, setTab] = useState(initial)
@@ -35,7 +35,7 @@ export default function AuthTiles({ initial = 'login' }) {
       const token = await user.getIdToken()
 
       // Check role
-      const res = await fetch(`${BACKEND_URL}/auth/me`, {
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/me`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       
@@ -70,7 +70,7 @@ export default function AuthTiles({ initial = 'login' }) {
         const token = await user.getIdToken()
         const payload = { user_type: role }
         if (role === 'institution') payload.hospital_name = hospitalName
-        await fetch(`${BACKEND_URL}/user`, {
+        await fetch(`${import.meta.env.VITE_BACKEND_URL}/user`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify(payload),

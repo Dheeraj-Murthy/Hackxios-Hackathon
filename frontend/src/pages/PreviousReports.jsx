@@ -37,8 +37,8 @@ export default function PreviousReports({ readOnly, hospitalView, patientUid: pr
           
           // If hospital view, get favorites from patient profile
           const favUrl = isHospitalView 
-            ? `${import.meta.env.VITE_BACKEND_URL}/hospital/patient/${targetUid}`
-            : `${import.meta.env.VITE_BACKEND_URL}/user/me`
+            ? `${import.meta.env.VITE_BACKEND_URL}/api/hospital/patient/${targetUid}`
+            : `${import.meta.env.VITE_BACKEND_URL}/api/user/me`
 
           const favoritesRes = await fetch(favUrl, {
             headers: {
@@ -147,7 +147,7 @@ export default function PreviousReports({ readOnly, hospitalView, patientUid: pr
       
       console.log("Adding marker to favorites from reports:", markerName)
       
-      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/user/favorites`, {
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/user/favorites`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

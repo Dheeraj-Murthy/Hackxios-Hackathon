@@ -1,4 +1,2 @@
-#firebase-admin.json
 venv/
 __pycache__/
-.env

@@ -26,6 +26,9 @@ export default function Dashboard({ readOnly: propReadOnly, hospitalView: propHo
     const targetUid = isHospitalView ? (propPatientUid || urlPatientUid) : user?.uid
 
     useEffect(() => {
+        // Debug environment variable
+        console.log('Backend URL:', import.meta.env.VITE_BACKEND_URL);
+        
         // Wait for auth to load and targetUid to be available
         if (authLoading || !targetUid || (!user && !isHospitalView)) return
 
@@ -35,8 +38,8 @@ export default function Dashboard({ readOnly: propReadOnly, hospitalView: propHo
 
                 // Fetch user data (different endpoints for hospital vs patient view)
                 const url = isHospitalView
-                    ? `${import.meta.env.VITE_BACKEND_URL}/hospital/patient/${targetUid}`
-                    : `${import.meta.env.VITE_BACKEND_URL}/user/me`
+                    ? `${import.meta.env.VITE_BACKEND_URL}/api/hospital/patient/${targetUid}`
+                    : `${import.meta.env.VITE_BACKEND_URL}/api/user/me`
 
                 const userRes = await fetch(url, {
                     headers: {
@@ -55,7 +58,7 @@ export default function Dashboard({ readOnly: propReadOnly, hospitalView: propHo
                 // Fetch actionable suggestions (only for patient view)
                 if (!isHospitalView) {
                     const suggestionsRes = await fetch(
-                        `${import.meta.env.VITE_BACKEND_URL}/dashboard/actionable-suggestions`,
+                        `${import.meta.env.VITE_BACKEND_URL}/api/dashboard/actionable-suggestions`,
                         {
                             headers: {
                                 Authorization: `Bearer ${token}`,
@@ -155,7 +158,7 @@ export default function Dashboard({ readOnly: propReadOnly, hospitalView: propHo
 
             console.log("Adding marker to favorites from dashboard:", markerName)
 
-            const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/user/favorites`, {
+            const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/user/favorites`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

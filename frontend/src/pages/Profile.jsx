@@ -79,8 +79,8 @@ export default function Profile({ readOnly: propReadOnly = false, hospitalView: 
                 const token = await user.getIdToken()
 
                 const url = isHospitalView
-                    ? `${import.meta.env.VITE_BACKEND_URL}/hospital/patient/${targetUid}`
-                    : `${import.meta.env.VITE_BACKEND_URL}/user/me`
+                    ? `${import.meta.env.VITE_BACKEND_URL}/api/hospital/patient/${targetUid}`
+                    : `${import.meta.env.VITE_BACKEND_URL}/api/user/me`
 
                 const res = await fetch(url, {
 
@@ -206,13 +206,13 @@ export default function Profile({ readOnly: propReadOnly = false, hospitalView: 
 
     async function addFavoriteMarker(markerName) {
         if (!markerName.trim()) return
-        
+
         try {
             const token = await user.getIdToken()
-            
+
             console.log("Adding favorite marker:", markerName)
-            
-            const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/user/favorites`, {
+
+            const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/user/favorites`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -222,13 +222,13 @@ export default function Profile({ readOnly: propReadOnly = false, hospitalView: 
             })
 
             console.log("Response status:", res.status)
-            
+
             if (!res.ok) {
                 const errorData = await res.json().catch(() => ({}))
                 console.error("Error response:", errorData)
                 throw new Error(errorData.detail || `Failed to add favorite marker (${res.status})`)
             }
-            
+
             const data = await res.json()
             console.log("Success response:", data)
             setFavoriteMarkers(data.favorites || [])
@@ -243,10 +243,10 @@ export default function Profile({ readOnly: propReadOnly = false, hospitalView: 
     async function removeFavoriteMarker(markerName) {
         try {
             const token = await user.getIdToken()
-            
+
             console.log("Removing favorite marker:", markerName)
-            
-            const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/user/favorites`, {
+
+            const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/user/favorites`, {
                 method: "DELETE",
                 headers: {
                     "Content-Type": "application/json",
@@ -262,7 +262,7 @@ export default function Profile({ readOnly: propReadOnly = false, hospitalView: 
                 console.error("Error response:", errorData)
                 throw new Error(errorData.detail || `Failed to remove favorite marker (${res.status})`)
             }
-            
+
             const data = await res.json()
             console.log("Remove success response:", data)
             setFavoriteMarkers(data.favorites || [])
@@ -459,9 +459,9 @@ export default function Profile({ readOnly: propReadOnly = false, hospitalView: 
                                                 type="submit"
                                                 className="btn-primary"
                                                 disabled={!newMarker.trim()}
-                                                style={{ 
+                                                style={{
                                                     whiteSpace: 'nowrap',
-                                                    opacity: newMarker.trim() ? 1 : 0.7 
+                                                    opacity: newMarker.trim() ? 1 : 0.7
                                                 }}
                                             >
                                                 Add Marker

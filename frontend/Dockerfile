@@ -7,6 +7,11 @@ COPY package.json package-lock.json ./
 RUN npm install
 
 COPY . .
+
+# Use production environment variables for build
+# ENV VITE_API_URL=/api
+# ENV VITE_BACKEND_URL=/api
+
 RUN npm run build
 
 # Production stage
@@ -18,6 +23,4 @@ COPY --from=build /app/dist /usr/share/nginx/html
 EXPOSE 80
 
 CMD ["nginx", "-g", "daemon off;"]
-
-COPY src ./src
 

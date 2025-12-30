@@ -22,9 +22,6 @@ class Settings(BaseSettings):
 
     # Firebase settings
     FIREBASE_ADMIN_KEY: Optional[str] = None
-
-    # CORS settings
-    FRONTEND_URL: str = "http://localhost:5173"
     
     class Config:
         env_file = ".env"

@@ -1,13 +1,17 @@
 services:
   backend:
     build: ./backend
+    container_name: hackxios-backend
     env_file:
       - ./backend/.env
     ports:
       - "8000:8000"
+    volumes:
+      - ./backend/firebase-admin.json:/app/firebase-admin.json:ro
 
   frontend:
     build: ./frontend
+    container_name: hackxios-frontend
     ports:
       - "5173:80"
     depends_on:

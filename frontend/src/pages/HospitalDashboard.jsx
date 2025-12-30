@@ -4,7 +4,7 @@ import { useAuth } from "../auth/useAuth"
 import { logout } from "../auth/logout"
 import { Search, UserPlus, Users, LogOut, Building2, X } from "lucide-react"
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
+
 
 export default function HospitalDashboard() {
   const navigate = useNavigate()
@@ -25,7 +25,7 @@ export default function HospitalDashboard() {
       try {
         const token = await user.getIdToken()
 
-        const res = await fetch(`${BACKEND_URL}/user/me`, {
+        const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/user/me`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -49,7 +49,7 @@ export default function HospitalDashboard() {
       try {
         const token = await user.getIdToken()
 
-        const res = await fetch(`${BACKEND_URL}/hospital/patients`, {
+        const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/hospital/patients`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -78,7 +78,7 @@ export default function HospitalDashboard() {
       setLoading(true)
       const token = await user.getIdToken()
 
-      const res = await fetch(`${BACKEND_URL}/access/request`, {
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/access/request`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
