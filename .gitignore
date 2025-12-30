@@ -19,7 +19,7 @@ src/uploads/*
 mathew_test.pdf
 
 # Firebase secrets
-*.json
+firebase-admin.json
 
 # OS / editor noise
 .DS_Store

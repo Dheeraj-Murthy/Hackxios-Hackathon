@@ -196,6 +196,7 @@ class FileHandler:
                 if text_result.returncode != 0:
                     print(f"Text extraction failed: {text_result.stderr}")
                     return None
+                # print(text_result)
                 
                 # Step 3: Read extracted text
                 if not os.path.exists(text_file_path):
@@ -208,6 +209,7 @@ class FileHandler:
                 if not extracted_text.strip():
                     print("No text extracted from PDF")
                     return None
+                print(extracted_text)
                 
                 # Step 4: Use LLM to extract structured CSV data
                 from src.llm_agent import LLMReportAgent
