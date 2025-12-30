@@ -1,20 +1,14 @@
-version: "3.9"
-
 services:
   backend:
-    image: healthinsight_backend
-    container_name: healthinsight_backend
+    build: ./backend
+    env_file:
+      - ./backend/.env
     ports:
       - "8000:8000"
-    env_file:
-      - backend/.env
-    restart: unless-stopped
 
   frontend:
-    image: healthinsight_frontend
-    container_name: healthinsight_frontend
+    build: ./frontend
     ports:
       - "5173:80"
     depends_on:
       - backend
-    restart: unless-stopped

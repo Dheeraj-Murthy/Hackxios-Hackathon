@@ -19,6 +19,7 @@ export default function Dashboard({ readOnly: propReadOnly, hospitalView: propHo
     const [latestAnalysis, setLatestAnalysis] = useState(null)
     const [loadingAnalysis, setLoadingAnalysis] = useState(true)
     const [loadingFavorites, setLoadingFavorites] = useState(true)
+    const [refreshKey, setRefreshKey] = useState(0)
 
     // Determine which patient UID to use
     const targetUid = isHospitalView ? (propPatientUid || urlPatientUid) : user?.uid
@@ -50,25 +51,6 @@ export default function Dashboard({ readOnly: propReadOnly, hospitalView: propHo
                 if (!isHospitalView) {
                     setFavoriteMarkers(userData.Favorites || [])
                     setLoadingFavorites(false)
-                }
-
-                // Fetch actionable suggestions (only for patient view)
-                if (!isHospitalView) {
-                    const suggestionsRes = await fetch(
-                        "http://localhost:8000/dashboard/actionable-suggestions",
-                        {
-                            headers: {
-                                Authorization: `Bearer ${token}`,
-                            },
-                        }
-                    )
-
-                    if (suggestionsRes.ok) {
-                        const suggestionsData = await suggestionsRes.json()
-                        setActionableSuggestions(suggestionsData.actionable_suggestions || [])
-                    } else {
-                        console.error("Failed to fetch actionable suggestions")
-                    }
                 }
 
                 // Fetch latest report and analysis
@@ -138,6 +120,30 @@ export default function Dashboard({ readOnly: propReadOnly, hospitalView: propHo
                     }
                 }
 
+                // Fetch actionable suggestions (only for patient view)
+                if (!isHospitalView) {
+                    const suggestionsRes = await fetch(
+                        "http://localhost:8000/dashboard/actionable-suggestions",
+                        {
+                            headers: {
+                                Authorization: `Bearer ${token}`,
+                            },
+                        }
+                    )
+
+                    if (suggestionsRes.ok) {
+                        const suggestionsData = await suggestionsRes.json()
+                        const suggestions = suggestionsData.actionable_suggestions || []
+                        setActionableSuggestions(suggestionsData.actionable_suggestions || [])
+
+                        if (suggestions.length === 0) {
+                            setTimeout(() => {setRefreshKey(k => k + 1)}, 4000)
+                        }
+                    } else {
+                        console.error("Failed to fetch actionable suggestions")
+                    }
+                }
+
             } catch (err) {
                 console.error("Dashboard data fetch failed:", err)
             } finally {
@@ -147,7 +153,7 @@ export default function Dashboard({ readOnly: propReadOnly, hospitalView: propHo
         }
 
         fetchDashboardData()
-    }, [user, targetUid, isHospitalView])
+    }, [user, targetUid, isHospitalView, refreshKey])
 
     async function addMarkerToFavorites(markerName) {
         try {
