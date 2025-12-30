@@ -301,27 +301,47 @@ CSV Output:
 
     async def generate_actionable_suggestions(self, meta_input: dict):
         prompt = f"""
-        You are a health AI assistant.
+            You are a health AI assistant.
 
-        You are given {meta_input.get("report_count")} recent medical reports
-        with their AI analyses.
+            You are given {meta_input.get("report_count")} recent medical reports
+            with their AI analyses (some analyses may be missing).
 
-        Your tasks:
-            - If only 1 report is available, base suggestions primarily on it
-            - If multiple reports exist, detect trends
-            - If more than 1 report, prioritize the most recent
-            - Generate 4-6 actionable suggestions
-            - Keep them concise and practical
+            Rules:
+            - If only 1 report exists → base suggestions on it
+            - If more than 1 report → detect trends
+            - If more than 5 reports were uploaded overall → only latest 5 are included
+            - Always prioritize the most recent report
+            - Generate 4-6 concise, practical actionable suggestions
             - Avoid repetition
 
-        Data:
-        {meta_input}
+            Data:
+            {json.dumps(meta_input, indent=2)}
 
-        Return JSON:
-        {{"actionable_suggestions": [string]}}
+            Return ONLY valid JSON:
+            {{"actionable_suggestions": [string]}}
         """
-        response = self.model.generate_content(prompt)
-        return self._safe_parse(response)
+
+        response = await asyncio.to_thread(
+            self.model.generate_content,
+            prompt
+        )
+
+        text = response.text if hasattr(response, "text") else str(response)
+
+        try:
+            parsed = json.loads(text)
+            return parsed
+        except Exception:
+            import re
+            match = re.search(r"\{[\s\S]*\}", text)
+            if match:
+                try:
+                    return json.loads(match.group(0))
+                except Exception:
+                    pass
+
+        return {"actionable_suggestions": []}
+
 
 
 if __name__ == "__main__":
