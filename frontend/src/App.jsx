@@ -8,7 +8,6 @@ import Profile from './pages/Profile'
 import UploadReport from './pages/UploadReport'
 import PreviousReports from './pages/PreviousReports'
 import AIChatbot from './pages/AIChatbot'
-import ChatButton from './components/ChatButton'
 import HospitalDashboard from "./pages/HospitalDashboard"
 import HospitalPatientDashboard from './pages/PatientDashboard'
 import HospitalPatientProfile from './pages/PatientProfile'
@@ -118,8 +117,6 @@ function PatientLayout() {
             <main className="app-main" style={{ background: '#f8fafc' }}>
                 <Outlet />
             </main>
-
-            <ChatButton />
         </div>
     )
 }
