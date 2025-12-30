@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard'
 import Profile from './pages/Profile'
 import UploadReport from './pages/UploadReport'
 import PreviousReports from './pages/PreviousReports'
+import ReportVisualization from './pages/ReportVisualization'
 import ChatButton from './components/ChatButton'
 import HospitalDashboard from "./pages/HospitalDashboard"
 import HospitalPatientDashboard from './pages/PatientDashboard'
@@ -15,6 +16,8 @@ import HospitalPatientReports from './pages/PatientReports'
 import HospitalPatientLayout from "./pages/HospitalPatientLayout"
 import { } from "module";
 import AccessRequests from "./pages/AccessRequests"
+import ProtectedRoute from "./auth/ProtectedRoute"
+import { useAuthRedirect } from "./hooks/useAuthRedirect"
 import { signOut } from "firebase/auth"
 import { auth } from "./firebase/firebase"
 import { useNavigate } from "react-router-dom"
@@ -93,6 +96,9 @@ function HospitalLayout() {
 
 //Routes
 export default function App() {
+    // Global 401 redirect handling
+    useAuthRedirect()
+    
     // Set favicon dynamically to match app logo
     useEffect(() => {
         // Create SVG favicon matching the app logo
@@ -134,6 +140,7 @@ export default function App() {
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/upload" element={<UploadReport />} />
                 <Route path="/previous" element={<PreviousReports />} />
+                <Route path="/report/:report_id" element={<ReportVisualization />} />
                 <Route path="/access-requests" element={<AccessRequests />} />
             </Route>
 

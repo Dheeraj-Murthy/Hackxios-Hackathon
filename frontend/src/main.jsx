@@ -7,10 +7,11 @@ import App from './App'
 import './index.css'
 
 createRoot(document.getElementById('root')).render(
-  /*to be protected later*/
   <React.StrictMode>
     <BrowserRouter>
-      <App />
+      <AuthProvider>
+        <App />
+      </AuthProvider>
     </BrowserRouter>
   </React.StrictMode>
 )

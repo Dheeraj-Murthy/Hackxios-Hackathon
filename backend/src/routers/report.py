@@ -26,7 +26,7 @@ def ping():
 
 
 @router.get("/db-test")
-async def test_db():
+async def test_db(current_user: dict = Depends(get_current_user)):
     try:
         mongo = await getMongo()
         if mongo is None:
@@ -365,7 +365,7 @@ async def upload_and_analyze(
 
 
 @router.get("/reports/{report_id}")
-async def get_report(report_id: str):
+async def get_report(report_id: str, current_user: dict = Depends(get_current_user)):
     """
     Retrieve a specific report by ID
     """
@@ -391,7 +391,7 @@ async def get_report(report_id: str):
 
 
 @router.get("/reports/patient/{patient_id}")
-async def get_patient_reports(patient_id: str):
+async def get_patient_reports(patient_id: str, current_user: dict = Depends(get_current_user)):
     """
     Retrieve all reports for a specific patient
     """
@@ -421,7 +421,8 @@ async def get_patient_reports(patient_id: str):
 @router.patch("/reports/{report_id}/processed-at")
 async def update_processed_at(
     report_id: str,
-    payload: ProcessedAtUpdate
+    payload: ProcessedAtUpdate,
+    current_user: dict = Depends(get_current_user)
 ):
     mongo = await getMongo()
     if mongo is None:
@@ -445,7 +446,8 @@ async def update_processed_at(
 @router.patch("/reports/{report_id}/attribute-by-name")
 async def update_attribute_by_name(
     report_id: str,
-    payload: AttributeUpdateByName
+    payload: AttributeUpdateByName,
+    current_user: dict = Depends(get_current_user)
 ):
     mongo = await getMongo()
     if mongo is None:
@@ -558,7 +560,7 @@ async def add_attribute(
 
 
 @router.delete("/reports/{report_id}/attribute-by-name")
-async def delete_attribute_by_name(report_id: str, payload: AttributeDeleteByName):
+async def delete_attribute_by_name(report_id: str, payload: AttributeDeleteByName, current_user: dict = Depends(get_current_user)):
     mongo = await getMongo()
     if mongo is None:
         raise HTTPException(status_code=500, detail="Database not connected")
@@ -667,7 +669,7 @@ def _fuzzy_match(search_term: str, test_name: str) -> bool:
 
 
 @router.get("/draw_graph/{patient_id}/{attribute}")
-async def draw_graph_data(patient_id: str, attribute: str):
+async def draw_graph_data(patient_id: str, attribute: str, current_user: dict = Depends(get_current_user)):
     """
     Extract specific attribute values from all patient reports for graphing
     """
@@ -792,7 +794,7 @@ async def draw_graph_data(patient_id: str, attribute: str):
 
 
 @router.delete("/reports/{report_id}")
-async def delete_report(report_id: str):
+async def delete_report(report_id: str, current_user: dict = Depends(get_current_user)):
     """
     Delete a report
     """
@@ -815,7 +817,7 @@ async def delete_report(report_id: str):
 
 
 @router.get("/reports")
-async def list_reports():
+async def list_reports(current_user: dict = Depends(get_current_user)):
     """
     List all reports (with pagination)
     """
