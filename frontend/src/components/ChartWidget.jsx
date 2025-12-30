@@ -21,7 +21,7 @@ export default function ChartWidget({ biomarker, patientUid }) {
                 // Use patientUid if provided (hospital view), otherwise use current user's uid
                 const uid = patientUid || user.uid
 
-                const response = await fetch(`http://127.0.0.1:8000/api/draw_graph/${uid}/${encodeURIComponent(biomarker)}`, {
+                const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/draw_graph/${uid}/${encodeURIComponent(biomarker)}`, {
                     headers: {
                         Authorization: `Bearer ${token}`,
                     },
@@ -101,7 +101,7 @@ export default function ChartWidget({ biomarker, patientUid }) {
     }
 
     return (
-        <div>
+        <div style={{ height: '200px', width: '100%' }}>
             <Line data={chartData} options={{
                 responsive: true,
                 maintainAspectRatio: false,

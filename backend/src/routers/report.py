@@ -418,6 +418,55 @@ async def get_patient_reports(patient_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error retrieving patient reports: {str(e)}")
 
+
+@router.get("/reports/{report_id}/biomarkers")
+async def get_report_biomarkers(report_id: str):
+    """Return the biomarkers (Attributes) for a given report in list form.
+
+    Response shape: { "report_id": str, "biomarkers": [ {name, value, range, unit, remark, key} ] }
+    """
+    try:
+        mongo = await getMongo()
+        if mongo is None:
+            raise HTTPException(status_code=500, detail="Database not connected")
+
+        report = await mongo.find_one("Reports", {"Report_id": report_id})
+        if not report:
+            raise HTTPException(status_code=404, detail="Report not found")
+
+        attributes = report.get("Attributes", {})
+
+        biomarkers = []
+        for key, test in attributes.items():
+            biomarkers.append({
+                "key": key,
+                "name": test.get("name"),
+                "value": test.get("value"),
+                "range": test.get("range"),
+                "unit": test.get("unit"),
+                "remark": test.get("remark"),
+            })
+
+        # Try to fetch associated LLM report to get suggested concern options
+        concern_options = []
+        try:
+            llm_id = report.get("llm_report_id")
+            if llm_id:
+                # llm_report_id is stored as string of ObjectId
+                llm_doc = await mongo.find_one("LLMReports", {"_id": ObjectId(llm_id)})
+                if llm_doc and isinstance(llm_doc.get("output"), dict):
+                    concern_options = llm_doc["output"].get("concern_options") or llm_doc["output"].get("concern_options") or []
+        except Exception:
+            # ignore llm fetch errors — don't block returning biomarkers
+            concern_options = []
+
+        return {"report_id": report_id, "biomarkers": biomarkers, "concern_options": concern_options}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error retrieving biomarkers: {str(e)}")
+
 @router.patch("/reports/{report_id}/processed-at")
 async def update_processed_at(
     report_id: str,
@@ -618,19 +667,28 @@ async def draw_graph_data(patient_id: str, attribute: str):
             attributes = report.get("Attributes", [])
             timestamp = report.get("Processed_at")
 
-            for test  in attributes:
+            for test in attributes:
                 test_dict = attributes[test]
-                if test_dict.get("name") == attribute:
+                test_name = test_dict.get("name", "")
+                
+                # Case-insensitive comparison
+                if test_name and test_name.lower().strip() == attribute.lower().strip():
                     
                     raw_value = test_dict.get("value")
                     remark = test_dict.get("remark")
 
-                    # Try to extract number (optional)
+                    # Try to extract number using regex
                     value = raw_value
                     try:
-                        value = float(str(raw_value).split()[0])
+                        # Look for the first float/int number in the string
+                        match = re.search(r"[-+]?\d*\.\d+|\d+", str(raw_value))
+                        if match:
+                            value = float(match.group())
+                        else:
+                            # If no number found, skip this point for the graph
+                            continue
                     except Exception:
-                        pass
+                        continue
 
                     values.append({
                         "value": value,

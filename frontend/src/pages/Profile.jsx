@@ -79,8 +79,8 @@ export default function Profile({ readOnly: propReadOnly = false, hospitalView: 
                 const token = await user.getIdToken()
 
                 const url = isHospitalView
-                    ? `http://localhost:8000/hospital/patient/${targetUid}`
-                    : "http://localhost:8000/user/me"
+                    ? `${import.meta.env.VITE_BACKEND_URL}/hospital/patient/${targetUid}`
+                    : `${import.meta.env.VITE_BACKEND_URL}/user/me`
 
                 const res = await fetch(url, {
 
@@ -179,7 +179,7 @@ export default function Profile({ readOnly: propReadOnly = false, hospitalView: 
             const token = await user.getIdToken()
 
             // 2. Call backend to update BioData
-            const res = await fetch("http://localhost:8000/user/me", {
+            const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/user/me`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
@@ -212,7 +212,7 @@ export default function Profile({ readOnly: propReadOnly = false, hospitalView: 
             
             console.log("Adding favorite marker:", markerName)
             
-            const res = await fetch("http://localhost:8000/user/favorites", {
+            const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/user/favorites`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -246,7 +246,7 @@ export default function Profile({ readOnly: propReadOnly = false, hospitalView: 
             
             console.log("Removing favorite marker:", markerName)
             
-            const res = await fetch("http://localhost:8000/user/favorites", {
+            const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/user/favorites`, {
                 method: "DELETE",
                 headers: {
                     "Content-Type": "application/json",
@@ -296,7 +296,7 @@ export default function Profile({ readOnly: propReadOnly = false, hospitalView: 
                                 try {
                                     setSendingVerification(true)
                                     await sendEmailVerification(user, {
-                                        url: "http://localhost:5173/profile",
+                                        url: `${window.location.origin}/profile`,
                                         handleCodeInApp: false,
                                     })
                                     alert("Verification email sent")
@@ -388,15 +388,15 @@ export default function Profile({ readOnly: propReadOnly = false, hospitalView: 
                     </div>
 
                     {/* Favorite Markers Section */}
-                    <div style={{ marginTop: 24 }}>
-                        <h4 style={{ marginBottom: 12, fontSize: 16 }}>Favorite Concern Markers</h4>
+                    <div style={{ marginTop: 32, paddingTop: 24, borderTop: '1px solid #f3f4f6' }}>
+                        <h4 style={{ marginBottom: 16, fontSize: 16, fontWeight: 600, color: '#374151' }}>Favorite Concern Markers</h4>
                         {loadingMarkers ? (
                             <p className="small-muted">Loading markers...</p>
                         ) : (
                             <>
-                                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
                                     {favoriteMarkers.length === 0 ? (
-                                        <p className="small-muted">No favorite markers yet. Add markers to track them in your dashboard.</p>
+                                        <p className="small-muted" style={{ fontStyle: 'italic' }}>No favorite markers yet. Add markers to track them in your dashboard.</p>
                                     ) : (
                                         favoriteMarkers.map((marker, index) => (
                                             <div
@@ -404,12 +404,14 @@ export default function Profile({ readOnly: propReadOnly = false, hospitalView: 
                                                 style={{
                                                     display: "inline-flex",
                                                     alignItems: "center",
-                                                    gap: 6,
-                                                    padding: "4px 8px",
-                                                    backgroundColor: "#e5e7eb",
-                                                    borderRadius: "16px",
-                                                    fontSize: "12px",
-                                                    color: "#374151"
+                                                    gap: 8,
+                                                    padding: "6px 12px",
+                                                    backgroundColor: "#f0fdfa",
+                                                    border: "1px solid #ccfbf1",
+                                                    borderRadius: "20px",
+                                                    fontSize: "13px",
+                                                    color: "#0f766e",
+                                                    fontWeight: 500
                                                 }}
                                             >
                                                 {marker}
@@ -419,15 +421,22 @@ export default function Profile({ readOnly: propReadOnly = false, hospitalView: 
                                                         style={{
                                                             background: "none",
                                                             border: "none",
-                                                            color: "#ef4444",
+                                                            color: "#0d9488",
                                                             cursor: "pointer",
-                                                            padding: "0",
-                                                            fontSize: "14px",
-                                                            lineHeight: "1"
+                                                            padding: "2px",
+                                                            display: "flex",
+                                                            alignItems: "center",
+                                                            justifyContent: "center",
+                                                            borderRadius: "50%",
                                                         }}
                                                         title="Remove marker"
+                                                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(13, 148, 136, 0.1)'}
+                                                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                                                     >
-                                                        ×
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                                                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                                                        </svg>
                                                     </button>
                                                 )}
                                             </div>
@@ -436,22 +445,28 @@ export default function Profile({ readOnly: propReadOnly = false, hospitalView: 
                                 </div>
 
                                 {!readOnly && (
-                                    <form onSubmit={handleAddMarker} style={{ display: "flex", gap: 8 }}>
-                                        <input
-                                            type="text"
-                                            value={newMarker}
-                                            onChange={(e) => setNewMarker(e.target.value)}
-                                            placeholder="Add new marker..."
-                                            className="input"
-                                            style={{ flex: 1, fontSize: "12px", padding: "6px 8px" }}
-                                        />
-                                        <button
-                                            type="submit"
-                                            className="btn-primary"
-                                            style={{ padding: "6px 12px", fontSize: "12px" }}
-                                        >
-                                            Add
-                                        </button>
+                                    <form onSubmit={handleAddMarker} style={{ position: 'relative' }}>
+                                        <div style={{ display: "flex", gap: 10 }}>
+                                            <input
+                                                type="text"
+                                                value={newMarker}
+                                                onChange={(e) => setNewMarker(e.target.value)}
+                                                placeholder="Add new marker (e.g. Hemoglobin)..."
+                                                className="input"
+                                                style={{ flex: 1 }}
+                                            />
+                                            <button
+                                                type="submit"
+                                                className="btn-primary"
+                                                disabled={!newMarker.trim()}
+                                                style={{ 
+                                                    whiteSpace: 'nowrap',
+                                                    opacity: newMarker.trim() ? 1 : 0.7 
+                                                }}
+                                            >
+                                                Add Marker
+                                            </button>
+                                        </div>
                                     </form>
                                 )}
                             </>
@@ -460,23 +475,36 @@ export default function Profile({ readOnly: propReadOnly = false, hospitalView: 
                 </div>
 
                 <div className="profile-right">
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
-                        <h3>Personal details</h3>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+                        <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#111827' }}>Personal Details</h3>
                         {isEditing ? (
-                            <button
-                                className="btn-primary"
-                                disabled={readOnly}
-                                onClick={onSave}
-                            >
-                                Save
-                            </button>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                <button
+                                    className="btn-secondary"
+                                    disabled={readOnly}
+                                    onClick={() => {
+                                        setIsEditing(false);
+                                        // Reset profile to saved state if needed, or just cancel edit mode
+                                    }}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    className="btn-primary"
+                                    disabled={readOnly}
+                                    onClick={onSave}
+                                    style={{ minWidth: 80 }}
+                                >
+                                    Save
+                                </button>
+                            </div>
                         ) : (
                             <button
                                 className="btn-secondary"
                                 disabled={readOnly}
                                 onClick={() => setIsEditing(true)}
                             >
-                                Edit
+                                Edit Profile
                             </button>
                         )}
                     </div>

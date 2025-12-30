@@ -8,7 +8,7 @@ from fastapi import UploadFile, HTTPException
 class FileHandler:
     def __init__(self, upload_dir: str = "src/uploads"):
         self.upload_dir = upload_dir
-        self.allowed_extensions = ['.pdf']
+        self.allowed_extensions = ['.pdf', '.png', '.jpg', '.jpeg']
         self.max_file_size = 10 * 1024 * 1024  # 10MB
         
         # Create upload directory if it doesn't exist
@@ -32,7 +32,7 @@ class FileHandler:
         if file_ext not in self.allowed_extensions:
             raise HTTPException(
                 status_code=400, 
-                detail=f"File type {file_ext} not allowed. Only PDF files are accepted."
+                detail=f"File type {file_ext} not allowed. Only PDF, PNG, JPG, and JPEG files are accepted."
             )
         
         return True
@@ -151,52 +151,69 @@ class FileHandler:
 
     def extract_csv_with_ocr(self, input_file_path: str, output_file_path: str) -> Optional[dict]:
         """
-        Extract data from PDF using OCR and LLM-based CSV extraction
+        Extract data from PDF or Image using OCR and LLM-based CSV extraction
         """
         try:
             import subprocess
             import os
+            from PIL import Image
             
             # Generate paths for OCR processing
             base_name = os.path.splitext(input_file_path)[0]
+            file_ext = os.path.splitext(input_file_path)[1].lower()
+            
+            working_pdf_path = input_file_path
+            
+            # If it's an image, convert to PDF first for ocrmypdf/pdftotext pipeline
+            if file_ext in ['.png', '.jpg', '.jpeg']:
+                print(f"Converting image {input_file_path} to PDF")
+                working_pdf_path = f"{base_name}_temp.pdf"
+                image = Image.open(input_file_path)
+                if image.mode == 'RGBA':
+                    image = image.convert('RGB')
+                image.save(working_pdf_path, "PDF", resolution=100.0)
+            
             ocr_pdf_path = f"{base_name}_ocr.pdf"
             text_file_path = f"{base_name}_text.txt"
             
             try:
                 # Step 1: Apply OCR to the PDF
-                print(f"Applying OCR to {input_file_path}")
-                ocr_result = subprocess.run([
+                print(f"Applying OCR to {working_pdf_path}")
+                # Use --force-ocr for images or PDFs that might not have text layers
+                ocr_command = [
                     "ocrmypdf", 
                     "--deskew",
                     "--clean",
-                    "--skip-text",  # Don't OCR text that's already present
-                    input_file_path, 
+                    "--rotate-pages",
+                    working_pdf_path, 
                     ocr_pdf_path
-                ], capture_output=True, text=True, timeout=120)
+                ]
+                
+                # If it was originally a PDF, we can use --skip-text to be faster
+                if file_ext == '.pdf':
+                    ocr_command.insert(2, "--skip-text")
+                
+                ocr_result = subprocess.run(ocr_command, capture_output=True, text=True, timeout=120)
                 
                 if ocr_result.returncode != 0:
                     print(f"OCR failed: {ocr_result.stderr}")
-                    # Try fallback: use original PDF without OCR
-                    print("Attempting to use original PDF without OCR...")
-                    ocr_pdf_path = input_file_path
+                    # Try fallback: use working PDF without OCR
+                    print("Attempting to use original file without OCR...")
+                    ocr_pdf_path = working_pdf_path
                 
                 # Step 2: Extract text from OCR'd PDF
                 print(f"Extracting text from {ocr_pdf_path}")
                 text_result = subprocess.run([
                     "pdftotext",
                     "-layout",
-                    "-y", "190",  # Start from y=190 (top of table area)
-                    "-H", "440",  # Height: 630-190 = 440
-                    "-W", "612",  # Width of the page
-                    "-x", "0",   # Start from x=0 (left edge)
                     ocr_pdf_path,
                     text_file_path
                 ], capture_output=True, text=True, timeout=60)
                 
                 if text_result.returncode != 0:
                     print(f"Text extraction failed: {text_result.stderr}")
-                    return None
-                # print(text_result)
+                    # Fallback to simple text extraction if layout fails
+                    subprocess.run(["pdftotext", ocr_pdf_path, text_file_path])
                 
                 # Step 3: Read extracted text
                 if not os.path.exists(text_file_path):
@@ -207,9 +224,8 @@ class FileHandler:
                     extracted_text = f.read()
                 
                 if not extracted_text.strip():
-                    print("No text extracted from PDF")
+                    print("No text extracted from file")
                     return None
-                print(extracted_text)
                 
                 # Step 4: Use LLM to extract structured CSV data
                 from src.llm_agent import LLMReportAgent
@@ -236,11 +252,12 @@ class FileHandler:
                 }
                 
             finally:
-                # Cleanup temporary files (but not original PDF)
+                # Cleanup temporary files
                 temp_files = [text_file_path]
-                # Only cleanup OCR file if it's different from original
                 if ocr_pdf_path != input_file_path:
                     temp_files.append(ocr_pdf_path)
+                if working_pdf_path != input_file_path:
+                    temp_files.append(working_pdf_path)
                     
                 for temp_file in temp_files:
                     if os.path.exists(temp_file):
@@ -270,66 +287,45 @@ class FileHandler:
             import pandas as pd
             import re
             
+            # Read CSV with header
             df = pd.read_csv(
                 input_file_name,
-                header=None,
                 engine="python",
-                names=["name", "value_and_remark", "range", "unit"],
             )
             
+            # Ensure columns are what we expect
+            # extract_csv_with_ocr writes: ['test_name', 'value', 'unit', 'range']
+            expected_cols = ['test_name', 'value', 'unit', 'range']
+            if not all(col in df.columns for col in expected_cols):
+                # Fallback if header is missing or different
+                df = pd.read_csv(
+                    input_file_name,
+                    header=None,
+                    engine="python",
+                    names=expected_cols,
+                )
             
-            
-            # Keep only rows that look like actual test results
-            df = df[
-                df["value_and_remark"].astype(str).str.contains(r"\d", regex=True)
-                & ~df["name"].astype(str).str.contains(r"[a-z]", regex=True, na=False)
-            ]
-            
-            # Function to split value_and_remark into separate value and remark
-            def split_value_and_remark(value_remark_str):
-                if pd.isna(value_remark_str) or str(value_remark_str) == "":
-                    return "", None
-                
-                value_remark_str = str(value_remark_str)
-                
-                # Pattern to match: number + optional decimal + optional unit + optional remark
-                # Examples: "110 mg/dL", "12.5 g/dL", "82", "126", "41 High"
-                pattern = r'^(\d+\.?\d*\s*[a-zA-Z/]*)(?:\s+(.+?)$)'
-                match = re.match(pattern, value_remark_str)
-                
-                if match:
-                    value_part = match.group(1)
-                    remark_part = match.group(2) if match.group(2) else None
-                    
-                    # If remark is in parentheses, extract content
-                    if remark_part and remark_part.startswith('(') and remark_part.endswith(')'):
-                        remark_part = remark_part[1:-1]
-                    
-                    return value_part, remark_part if remark_part else None
-                else:
-                    # Handle pure numbers without units - treat as value
-                    if re.match(r'^\d+\.?\d*$', value_remark_str):
-                        return value_remark_str, None
-                    # If pattern doesn't match, treat whole string as value
-                    return value_remark_str, None
-            
-            # Create structured data with all 4 columns
+            # Create structured data
             structured_data = []
             for row in df.itertuples(index=False):
-                # Handle NaN values by converting None to string
-                # Access tuple elements by index instead of name
-                name = str(row[0]) if pd.notna(row[0]) else ""
-                value_and_remark = str(row[1]) if pd.notna(row[1]) else ""
-                range_str = str(row[2]) if pd.notna(row[2]) else ""
-                unit = str(row[3]) if pd.notna(row[3]) else ""
+                # Handle NaN values
+                name = str(row.test_name) if pd.notna(row.test_name) else ""
+                value = str(row.value) if pd.notna(row.value) else ""
+                unit = str(row.unit) if pd.notna(row.unit) else ""
+                range_str = str(row.range) if pd.notna(row.range) else ""
                 
-                # Split value_and_remark into separate value and remark
-                value, remark = split_value_and_remark(value_and_remark)
+                # Skip header row if it was read as data
+                if name.lower() in ['test_name', 'test', 'name']:
+                    continue
+                
+                # Basic validation: must have a name and some value
+                if not name or not value:
+                    continue
                 
                 structured_data.append({
                     "name": name,
                     "value": value,
-                    "remark": remark,
+                    "remark": None, # Remark is not explicitly in the 4-column CSV
                     "range": range_str,
                     "unit": unit
                 })

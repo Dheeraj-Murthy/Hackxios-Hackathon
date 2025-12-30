@@ -262,6 +262,29 @@ async def remove_favorite_marker(
     return {"favorites": favorites}
 
 
+# GET CURRENT USER FAVORITES
+@router.get("/user/favorites")
+async def get_favorite_markers(current_user=Depends(get_current_user)):
+    """Return the list of favorite markers for the current patient user."""
+    from fastapi import HTTPException
+
+    if current_user is None:
+        # If dependency returned None (e.g. preflight or unauthenticated), deny access
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    mongo = await getMongo()
+
+    user = await mongo.find_one(
+        "Users",
+        {"uid": current_user["uid"], "user_type": "patient"}
+    )
+
+    if not user:
+        raise HTTPException(status_code=404, detail="Patient user not found")
+
+    return {"favorites": user.get("Favorites", [])}
+
+
 # GET USER BY OBJECT ID
 @router.get("/user/{user_id}")
 async def get_user(user_id: str):
@@ -364,5 +387,6 @@ async def get_patient_for_hospital(
         "email": patient.get("email"),
         "name": patient.get("name", ""),
         "BioData": patient.get("BioData", {}),
-        "Reports": patient.get("Reports", [])
+        "Reports": patient.get("Reports", []),
+        "Favorites": patient.get("Favorites", [])
     }
