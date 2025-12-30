@@ -1,13 +1,23 @@
 services:
   backend:
-    build: ./backend
+
+
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    # image: healthinsight_backend
+    container_name: healthinsight_backend
     env_file:
       - ./backend/.env
     ports:
       - "8000:8000"
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    # image: healthinsight_frontend
+    container_name: healthinsight_frontend
     ports:
       - "5173:80"
     depends_on:
