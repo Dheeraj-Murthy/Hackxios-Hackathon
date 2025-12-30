@@ -36,7 +36,7 @@ export default function AIChatbot() {
       setLoadingReports(true)
       const token = await user.getIdToken()
       
-      const response = await fetch(`http://localhost:8000/api/LLMReportsPatientList/${user.uid}`, {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/LLMReportsPatientList/${user.uid}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -111,7 +111,7 @@ export default function AIChatbot() {
     try {
       const token = await user.getIdToken()
 
-      const response = await fetch('http://localhost:8000/api/chat', {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
