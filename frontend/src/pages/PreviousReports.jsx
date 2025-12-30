@@ -66,54 +66,92 @@ export default function PreviousReports({ readOnly, hospitalView, patientUid: pr
         }
         const token = await user.getIdToken()
         
-        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/reports/patient/${targetUid}`, {
+        // Fetch top 10 latest LLM reports list
+        const listResponse = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/LLMReportsPatientList/${targetUid}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         })
 
-        if (!response.ok) {
-          throw new Error("Failed to fetch reports")
+        if (!listResponse.ok) {
+          throw new Error("Failed to fetch reports list")
         }
 
-        const data = await response.json()
+        const reportsList = await listResponse.json()
         
-        // Fetch LLM analyses for each report
-        const reportsWithAnalysis = await Promise.all(
-          data.reports.map(async (report) => {
-            let analysis = null
+        // Fetch full details for each LLM report
+        const reportsWithDetails = await Promise.all(
+          reportsList.map(async (reportItem) => {
+            const reportId = reportItem._id.$oid || reportItem._id
             
-            if (report.llm_report_id) {
-              try {
-                const analysisResponse = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/LLMReport/${report.llm_report_id}`, {
-                  headers: {
-                    Authorization: `Bearer ${token}`,
-                  },
-                })
+            try {
+              const detailResponse = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/LLMReport/${reportId}`, {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              })
+              
+              if (detailResponse.ok) {
+                const fullReport = await detailResponse.json()
                 
-                if (analysisResponse.ok) {
-                  const analysisData = await analysisResponse.json()
-                  analysis = analysisData.output
+                // Extract biomarkers from input field (matches MetricData schema)
+                const inputData = fullReport.input || {}
+                const biomarkers = Object.entries(inputData).map(([key, test]) => ({
+                  name: test.name || key,
+                  value: test.value || '',
+                  unit: test.unit || '',
+                  range: test.range || '',
+                  remark: test.remark || '',
+                  verdict: test.verdict || ''
+                }))
+                
+                // Parse date from time field (ISO string format)
+                const reportTime = fullReport.time || reportItem.time
+                const reportDate = reportTime 
+                  ? new Date(reportTime).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+                  : 'Unknown date'
+                const rawDate = reportTime ? new Date(reportTime) : new Date(0)
+                
+                return {
+                  _id: reportId,
+                  Report_id: fullReport.report_id,
+                  patient_id: fullReport.patient_id,
+                  llm_report_id: reportId,
+                  date: reportDate,
+                  rawDate: rawDate,
+                  Processed_at: reportTime,
+                  analysis: fullReport.output,
+                  Attributes: inputData,
+                  biomarkers: biomarkers
                 }
-              } catch (err) {
-                console.error("Failed to fetch analysis for report:", report._id, err)
               }
+            } catch (err) {
+              console.error("Failed to fetch LLM report details:", reportId, err)
             }
             
+            // Return partial data if full fetch fails
+            const reportTime = reportItem.time
             return {
-              ...report,
-              analysis,
-              date: report.Processed_at ? new Date(report.Processed_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Unknown date',
-              rawDate: report.Processed_at ? new Date(report.Processed_at) : new Date(0)
+              _id: reportId,
+              Report_id: reportItem.report_id,
+              llm_report_id: reportId,
+              date: reportTime 
+                ? new Date(reportTime).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+                : 'Unknown date',
+              rawDate: reportTime ? new Date(reportTime) : new Date(0),
+              Processed_at: reportTime,
+              analysis: null,
+              Attributes: {},
+              biomarkers: []
             }
           })
         )
         
         // Sort by date (newest first)
-        reportsWithAnalysis.sort((a, b) => b.rawDate - a.rawDate)
+        reportsWithDetails.sort((a, b) => b.rawDate - a.rawDate)
         
-        setReports(reportsWithAnalysis)
-        setFilteredReports(reportsWithAnalysis)
+        setReports(reportsWithDetails)
+        setFilteredReports(reportsWithDetails)
 
       } catch (err) {
         console.error("Failed to fetch reports:", err)

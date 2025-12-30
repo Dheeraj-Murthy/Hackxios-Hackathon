@@ -11,8 +11,22 @@ export default function ReportTile({ report, user, onClose, favoriteMarkers, set
   const [newMarkerName, setNewMarkerName] = useState("")
 
   useEffect(() => {
-    if (!report || !report.Report_id) return
-    fetchBiomarkers()
+    if (!report) return
+    
+    // If biomarkers are already provided from LLM report input, use them directly
+    if (report.biomarkers && report.biomarkers.length > 0) {
+      setBiomarkers(report.biomarkers)
+      setConcernOptions(report.analysis?.concern_options || [])
+      setLoading(false)
+      return
+    }
+    
+    // Fall back to API fetch if Report_id exists and no biomarkers provided
+    if (report.Report_id) {
+      fetchBiomarkers()
+    } else {
+      setLoading(false)
+    }
   }, [report])
 
   async function fetchBiomarkers() {

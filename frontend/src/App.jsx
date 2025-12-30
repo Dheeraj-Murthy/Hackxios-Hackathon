@@ -63,10 +63,10 @@ function PatientLayout() {
                     <NavLink to="/profile" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>
                         <User size={18} /> My Profile
                     </NavLink>
-                    <NavLink to="/ai-chat">
-                        <MessageCircle size={16} style={{ marginRight: 8 }} /> AI Assistant
-                    </NavLink>
 
+                    <NavLink to="/ai-chat" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>
+                        <MessageCircle size={18} /> AI Assistant
+                    </NavLink>
 
                     <NavLink to="/access-requests" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>
                         <Users size={18} /> Access Requests
