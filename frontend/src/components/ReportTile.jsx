@@ -13,8 +13,22 @@ export default function ReportTile({ report, user, onClose, favoriteMarkers, set
     const [editMode, setEditMode] = useState(false)
 
     useEffect(() => {
-        if (!report || !report.Report_id) return
-        fetchBiomarkers()
+        if (!report) return
+
+        // If biomarkers are already provided from LLM report input, use them directly
+        if (report.biomarkers && report.biomarkers.length > 0) {
+            setBiomarkers(report.biomarkers)
+            setConcernOptions(report.analysis?.concern_options || [])
+            setLoading(false)
+            return
+        }
+
+        // Fall back to API fetch if Report_id exists and no biomarkers provided
+        if (report.Report_id) {
+            fetchBiomarkers()
+        } else {
+            setLoading(false)
+        }
     }, [report])
 
     async function fetchBiomarkers() {
@@ -28,7 +42,7 @@ export default function ReportTile({ report, user, onClose, favoriteMarkers, set
 
             if (!res.ok) throw new Error('Failed to load report')
             const reportData = await res.json()
-            
+
             // Convert attributes object to array (same logic as ReportVisualization + EditReportTable)
             const attributes = reportData.Attributes || {}
             const biomarkersArray = Object.entries(attributes).map(([key, attr]) => ({
@@ -39,7 +53,7 @@ export default function ReportTile({ report, user, onClose, favoriteMarkers, set
                 unit: attr.unit || '',
                 remark: attr.remark || ''
             }))
-            
+
             setBiomarkers(biomarkersArray)
         } catch (err) {
             console.error(err)
@@ -52,7 +66,7 @@ export default function ReportTile({ report, user, onClose, favoriteMarkers, set
     // Convert biomarkers array back to attributes object for EditReportTable
     const getAttributesObject = () => {
         if (!biomarkers) return {}
-        
+
         const attributes = {}
         biomarkers.forEach(biomarker => {
             if (biomarker.key) {
@@ -350,7 +364,7 @@ export default function ReportTile({ report, user, onClose, favoriteMarkers, set
                                     {editMode ? 'View Mode' : 'Edit Mode'}
                                 </button>
                             </div>
-                            
+
                             {editMode ? (
                                 <div>
                                     {saving && (
