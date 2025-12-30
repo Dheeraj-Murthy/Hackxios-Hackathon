@@ -1,4 +1,5 @@
 from src.llm_agent import LLMReportAgent
+import google.generativeai as genai
 import re
 
 
@@ -223,7 +224,7 @@ Keep the response concise and clear.
 
 '''
 
-def build_query_prompt (task_str,context):
+def build_query_prompt(task_str, context):
   return f'''
     Conversation History:
     {context['conversation_history']}
@@ -268,7 +269,7 @@ def extract_intent_fields(text):
       "reason": reason
     }
 
-def generate_chat_response (context):
+def generate_chat_response(context):
 
   #  Classify intent
   query_selection_llm = LLMReportAgent(system_instruction=query_selection_system_prompt)
