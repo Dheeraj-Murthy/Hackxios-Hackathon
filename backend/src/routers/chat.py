@@ -5,6 +5,7 @@ from src.auth.dependencies import get_current_user
 from src.llm_agent import LLMReportAgent
 from src.db.mongoWrapper import getMongo
 from src.llm_chat import generate_chat_response
+from bson import ObjectId
 
 router = APIRouter(prefix="/api", tags=["Chat"])
 
@@ -16,6 +17,8 @@ class ChatRequest(BaseModel):
   message: str
   user_id: str
   conversation_history: Optional[List[dict]] = []
+  # added 
+  report_id: str
 
 class ChatResponse(BaseModel):
   response: str
@@ -45,16 +48,11 @@ async def chat_with_ai(
 
     # Fetch user's recent reports for context
     mongo = await getMongo()
-    user_reports = await mongo.find_many(
-      "LLMReports", 
-      {"patient_id": current_user["uid"]}, 
-      limit=1
-    )
+    user_report = await mongo.find_one("LLMReports", {"_id": ObjectId(request.report_id)})
 
-    if user_reports and len(user_reports) > 0:
-      context["medical_report"] = user_reports[0].get('input', '')
-      context["suggestion_list"] = user_reports[0].get('output', '')
-
+    if user_report:
+      context["medical_report"] = user_report.get('input', '')
+      context["suggestion_list"] = user_report.get('output', '')
       # Generate response using LLM agent
       # For now, we'll use a simple chat response
       # In production, this would integrate with the LLM agent's chat capabilities

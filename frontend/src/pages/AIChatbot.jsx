@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Send, Bot, User, Loader2, MessageCircle, Trash2 } from 'lucide-react'
+import { Send, Bot, User, Loader2, MessageCircle, Trash2, FileText, ChevronDown, Plus } from 'lucide-react'
 import { useAuth } from '../auth/useAuth'
 import ReactMarkdown from 'react-markdown'
 
@@ -17,6 +17,64 @@ export default function AIChatbot() {
   const [error, setError] = useState('')
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
+  
+  // Report selection state
+  const [reports, setReports] = useState([])
+  const [selectedReportId, setSelectedReportId] = useState(null)
+  const [loadingReports, setLoadingReports] = useState(true)
+  const [showReportSelector, setShowReportSelector] = useState(false)
+
+  // Fetch available reports on mount
+  useEffect(() => {
+    if (user) {
+      fetchReports()
+    }
+  }, [user])
+
+  const fetchReports = async () => {
+    try {
+      setLoadingReports(true)
+      const token = await user.getIdToken()
+      
+      const response = await fetch(`http://localhost:8000/api/LLMReportsPatientList/${user.uid}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setReports(data)
+        // Default to latest report (first one since sorted by time desc)
+        if (data.length > 0) {
+          setSelectedReportId(data[0]._id.$oid || data[0]._id)
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch reports:', err)
+    } finally {
+      setLoadingReports(false)
+    }
+  }
+
+  const getReportId = (report) => {
+    return report._id.$oid || report._id
+  }
+
+  const formatReportDate = (timeStr) => {
+    try {
+      const date = new Date(timeStr)
+      return date.toLocaleDateString([], { 
+        month: 'short', 
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    } catch {
+      return 'Unknown date'
+    }
+  }
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -62,7 +120,8 @@ export default function AIChatbot() {
         body: JSON.stringify({
           message: userMessage.text,
           user_id: user.uid,
-          conversation_history: getConversationHistory()
+          conversation_history: getConversationHistory(),
+          report_id: selectedReportId
         })
       })
 
@@ -116,6 +175,7 @@ export default function AIChatbot() {
       }
     ])
     setError('')
+    setShowReportSelector(false)
   }
 
   const formatTime = (timestamp) => {
@@ -149,15 +209,148 @@ export default function AIChatbot() {
           <MessageCircle size={28} color="#0ea5a4" />
           AI Health Assistant
         </h2>
-        <button 
-          onClick={clearConversation}
-          className="btn-secondary"
-          style={{ display: 'flex', alignItems: 'center', gap: 6 }}
-        >
-          <Trash2 size={16} />
-          Clear Chat
-        </button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          {/* Report Selector */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowReportSelector(!showReportSelector)}
+              className="btn-secondary"
+              style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 6,
+                minWidth: 180
+              }}
+              disabled={loadingReports}
+            >
+              <FileText size={16} />
+              {loadingReports ? (
+                'Loading...'
+              ) : selectedReportId ? (
+                <span style={{ 
+                  maxWidth: 120, 
+                  overflow: 'hidden', 
+                  textOverflow: 'ellipsis', 
+                  whiteSpace: 'nowrap' 
+                }}>
+                  {reports.find(r => getReportId(r) === selectedReportId)
+                    ? formatReportDate(reports.find(r => getReportId(r) === selectedReportId).time)
+                    : 'Select Report'}
+                </span>
+              ) : (
+                'No Reports'
+              )}
+              <ChevronDown size={14} style={{ marginLeft: 'auto' }} />
+            </button>
+            
+            {/* Dropdown */}
+            {showReportSelector && reports.length > 0 && (
+              <div 
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  right: 0,
+                  marginTop: 4,
+                  background: '#fff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 8,
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                  zIndex: 100,
+                  minWidth: 240,
+                  maxHeight: 300,
+                  overflowY: 'auto'
+                }}
+              >
+                <div style={{ padding: '8px 12px', borderBottom: '1px solid #f1f5f9', fontSize: 12, color: '#64748b' }}>
+                  Select a report to chat about
+                </div>
+                {reports.map((report, idx) => (
+                  <button
+                    key={getReportId(report)}
+                    onClick={() => {
+                      setSelectedReportId(getReportId(report))
+                      setShowReportSelector(false)
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      width: '100%',
+                      padding: '10px 12px',
+                      border: 'none',
+                      background: selectedReportId === getReportId(report) ? '#f0fdfa' : 'transparent',
+                      borderLeft: selectedReportId === getReportId(report) ? '3px solid #0ea5a4' : '3px solid transparent',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      transition: 'all 0.15s ease'
+                    }}
+                    onMouseOver={(e) => {
+                      if (selectedReportId !== getReportId(report)) {
+                        e.currentTarget.style.background = '#f8fafc'
+                      }
+                    }}
+                    onMouseOut={(e) => {
+                      if (selectedReportId !== getReportId(report)) {
+                        e.currentTarget.style.background = 'transparent'
+                      }
+                    }}
+                  >
+                    <FileText size={16} color={selectedReportId === getReportId(report) ? '#0ea5a4' : '#64748b'} />
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 500, color: '#1e293b' }}>
+                        Report {idx + 1}
+                        {idx === 0 && (
+                          <span style={{ 
+                            marginLeft: 6, 
+                            fontSize: 10, 
+                            background: '#0ea5a4', 
+                            color: '#fff', 
+                            padding: '2px 6px', 
+                            borderRadius: 10 
+                          }}>
+                            Latest
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: 11, color: '#64748b' }}>
+                        {formatReportDate(report.time)}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          
+          <button 
+            onClick={clearConversation}
+            className="btn-secondary"
+            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            <Trash2 size={16} />
+            Clear Chat
+          </button>
+        </div>
       </div>
+
+      {/* No reports warning */}
+      {!loadingReports && reports.length === 0 && (
+        <div style={{ 
+          background: '#fef3c7', 
+          border: '1px solid #fcd34d', 
+          borderRadius: 8, 
+          padding: '12px 16px', 
+          marginBottom: 16,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          fontSize: 14,
+          color: '#92400e'
+        }}>
+          <FileText size={18} />
+          You don't have any analyzed reports yet. Upload and analyze a report first to get personalized responses.
+        </div>
+      )}
 
       <div className="card" style={{ height: 'calc(100vh - 200px)', display: 'flex', flexDirection: 'column' }}>
         {/* Chat Messages Area */}
