@@ -76,7 +76,7 @@ class FastOCR:
                 # Build optimized OCR command with enhanced timeout handling
                 cmd = [
                     "ocrmypdf",
-                    "--skip-text",
+                    "--force-ocr",
                     "--output-type", "pdf",
                     "--jobs", str(self.ocr_jobs),
                     "--image-dpi", str(self.image_dpi),

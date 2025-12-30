@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Routes, Route, NavLink, Outlet } from 'react-router-dom'
 import { Home, FilePlus, Archive, User, LogOut, Users, FileText } from 'lucide-react'
 import Login from './pages/Login'
@@ -94,6 +94,36 @@ function HospitalLayout() {
 
 //Routes
 export default function App() {
+    // Set favicon dynamically to match app logo
+    useEffect(() => {
+        // Create SVG favicon matching the app logo
+        const svgFavicon = `
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+                <rect width="32" height="32" rx="6" fill="none"/>
+                <circle cx="16" cy="16" r="15" fill="#0ea5a4"/>
+                <path d="M10 16h12" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+        `;
+
+        // Convert SVG to data URL
+        const svgBlob = new Blob([svgFavicon], { type: 'image/svg+xml' });
+        const svgUrl = URL.createObjectURL(svgBlob);
+
+        // Update favicon
+        let link = document.querySelector("link[rel*='icon']") || document.createElement('link');
+        link.type = 'image/svg+xml';
+        link.rel = 'shortcut icon';
+        link.href = svgUrl;
+
+        if (!document.querySelector("link[rel*='icon']")) {
+            document.head.appendChild(link);
+        }
+
+        // Cleanup function
+        return () => {
+            URL.revokeObjectURL(svgUrl);
+        };
+    }, []);
     return (
         <Routes>
             <Route path="/" element={<Register />} />

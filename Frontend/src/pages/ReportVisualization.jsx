@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from "../auth/useAuth"
 import EditReportTable from '../components/EditReportTable'
 import AnalysisCard from '../components/AnalysisCard'
@@ -9,6 +9,7 @@ export default function ReportVisualization() {
     const { report_id } = useParams()
     const navigate = useNavigate()
     const { user } = useAuth()
+    const location = useLocation()
 
     const [report, setReport] = useState(null)
     const [analysis, setAnalysis] = useState(null)
@@ -21,8 +22,22 @@ export default function ReportVisualization() {
     useEffect(() => {
         if (!user || !report_id) return
 
-        fetchReportData()
-    }, [user, report_id])
+        // Check if we have data from navigation state (new upload)
+        if (location.state?.reportData && location.state?.isNewUpload) {
+            const { reportData } = location.state
+            setReport({
+                Report_id: reportData.report_id,
+                Patient_id: reportData.patient_id,
+                Processed_at: reportData.processed_at || new Date().toISOString(),
+                Attributes: reportData.attributes || {}
+            })
+            setAnalysis(reportData.llm_analysis)
+            setLoading(false)
+        } else {
+            // Otherwise fetch from API
+            fetchReportData()
+        }
+    }, [user, report_id, location.state])
 
     const fetchReportData = async () => {
         try {

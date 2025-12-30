@@ -3,6 +3,16 @@ import { Line } from 'react-chartjs-2'
 import { Chart as ChartJS, LineElement, CategoryScale, LinearScale, PointElement, Tooltip, Legend } from 'chart.js'
 import { useAuth } from "../auth/useAuth"
 
+// Normalize biomarker name for better matching - less aggressive to preserve matching potential
+const normalizeBiomarkerName = (name) => {
+    return name.toLowerCase()
+        .replace(/\s+/g, ' ')           // normalize spaces
+        .replace(/\s*\(.*?\)\s*/g, '')  // remove content in parentheses but keep surrounding context
+        .replace(/\/[a-z]*[a-z]$/gi, '')  // remove units only at end like /dL, /uL
+        .replace(/mg\/dl|mmol\/l|mm\/hg|%$/gi, '')  // remove other units only at end
+        .trim();
+};
+
 ChartJS.register(LineElement, CategoryScale, LinearScale, PointElement, Tooltip, Legend)
 
 export default function ChartWidget({ biomarker, patientUid }) {
@@ -21,7 +31,9 @@ export default function ChartWidget({ biomarker, patientUid }) {
                 // Use patientUid if provided (hospital view), otherwise use current user's uid
                 const uid = patientUid || user.uid
 
-                const response = await fetch(`http://127.0.0.1:8000/api/draw_graph/${uid}/${encodeURIComponent(biomarker)}`, {
+                // Use normalized biomarker name for better matching
+                const normalizedBiomarker = normalizeBiomarkerName(biomarker);
+                const response = await fetch(`http://127.0.0.1:8000/api/draw_graph/${uid}/${encodeURIComponent(normalizedBiomarker)}`, {
                     headers: {
                         Authorization: `Bearer ${token}`,
                     },
