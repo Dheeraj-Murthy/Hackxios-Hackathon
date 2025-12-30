@@ -79,8 +79,8 @@ export default function Profile({ readOnly: propReadOnly = false, hospitalView: 
                 const token = await user.getIdToken()
 
                 const url = isHospitalView
-                    ? `http://localhost:8000/hospital/patient/${targetUid}`
-                    : "http://localhost:8000/user/me"
+                    ? `${import.meta.env.VITE_BACKEND_URL}/hospital/patient/${targetUid}`
+                    : `${import.meta.env.VITE_BACKEND_URL}/user/me`
 
                 const res = await fetch(url, {
 
@@ -179,7 +179,7 @@ export default function Profile({ readOnly: propReadOnly = false, hospitalView: 
             const token = await user.getIdToken()
 
             // 2. Call backend to update BioData
-            const res = await fetch("http://localhost:8000/user/me", {
+            const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/user/me`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
@@ -212,7 +212,7 @@ export default function Profile({ readOnly: propReadOnly = false, hospitalView: 
             
             console.log("Adding favorite marker:", markerName)
             
-            const res = await fetch("http://localhost:8000/user/favorites", {
+            const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/user/favorites`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -246,7 +246,7 @@ export default function Profile({ readOnly: propReadOnly = false, hospitalView: 
             
             console.log("Removing favorite marker:", markerName)
             
-            const res = await fetch("http://localhost:8000/user/favorites", {
+            const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/user/favorites`, {
                 method: "DELETE",
                 headers: {
                     "Content-Type": "application/json",

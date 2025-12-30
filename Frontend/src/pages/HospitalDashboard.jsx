@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom"
 import { useAuth } from "../auth/useAuth"
 import { logout } from "../auth/logout"
 
-const BACKEND_URL = "http://localhost:8000"
+const BACKEND_URL = `${import.meta.env.VITE_BACKEND_URL}`
 
 export default function HospitalDashboard() {
   const navigate = useNavigate()

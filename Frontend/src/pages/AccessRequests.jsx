@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react"
 import { useAuth } from "../auth/useAuth"
 
-const BACKEND_URL = "http://127.0.0.1:8000"
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
 
 export default function AccessRequests() {
   const { user, loading } = useAuth()

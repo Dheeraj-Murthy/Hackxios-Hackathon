@@ -21,7 +21,7 @@ export default function HospitalPatient() {
         const token = await user.getIdToken()
 
         // First, get all approved patients to find the one with matching UID
-        const patientsRes = await fetch("http://localhost:8000/hospital/patients", {
+        const patientsRes = await fetch(`${import.meta.env.VITE_BACKEND_URL}/hospital/patients`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -41,7 +41,7 @@ export default function HospitalPatient() {
         setPatientData(patient)
 
         // Fetch patient's reports
-        const reportsRes = await fetch(`http://127.0.0.1:8000/api/reports/patient/${id}`, {
+        const reportsRes = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/reports/patient/${id}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -57,7 +57,7 @@ export default function HospitalPatient() {
               
               if (report.llm_report_id) {
                 try {
-                  const analysisRes = await fetch(`http://127.0.0.1:8000/api/LLMReport/${report.llm_report_id}`, {
+                  const analysisRes = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/LLMReport/${report.llm_report_id}`, {
                     headers: {
                       Authorization: `Bearer ${token}`,
                     },

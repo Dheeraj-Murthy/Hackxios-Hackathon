@@ -34,8 +34,8 @@ export default function Dashboard({ readOnly: propReadOnly, hospitalView: propHo
 
                 // Fetch user data (different endpoints for hospital vs patient view)
                 const url = isHospitalView
-                    ? `http://localhost:8000/hospital/patient/${targetUid}`
-                    : "http://localhost:8000/user/me"
+                    ? `${import.meta.env.VITE_BACKEND_URL}/hospital/patient/${targetUid}`
+                    : `${import.meta.env.VITE_BACKEND_URL}/user/me`
 
                 const userRes = await fetch(url, {
                     headers: {
@@ -54,7 +54,7 @@ export default function Dashboard({ readOnly: propReadOnly, hospitalView: propHo
                 }
 
                 // Fetch latest report and analysis
-                const reportsRes = await fetch(`http://127.0.0.1:8000/api/reports/patient/${targetUid}`, {
+                const reportsRes = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/reports/patient/${targetUid}`, {
                     headers: {
                         Authorization: `Bearer ${token}`,
                     },
@@ -103,7 +103,7 @@ export default function Dashboard({ readOnly: propReadOnly, hospitalView: propHo
                         // Fetch LLM analysis for the latest report
                         if (latestReport.llm_report_id) {
                             try {
-                                const analysisRes = await fetch(`http://127.0.0.1:8000/api/LLMReport/${latestReport.llm_report_id}`, {
+                                const analysisRes = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/LLMReport/${latestReport.llm_report_id}`, {
                                     headers: {
                                         Authorization: `Bearer ${token}`,
                                     },
@@ -123,7 +123,7 @@ export default function Dashboard({ readOnly: propReadOnly, hospitalView: propHo
                 // Fetch actionable suggestions (only for patient view)
                 if (!isHospitalView) {
                     const suggestionsRes = await fetch(
-                        "http://localhost:8000/dashboard/actionable-suggestions",
+                        `${import.meta.env.VITE_BACKEND_URL}/dashboard/actionable-suggestions`,
                         {
                             headers: {
                                 Authorization: `Bearer ${token}`,
@@ -161,7 +161,7 @@ export default function Dashboard({ readOnly: propReadOnly, hospitalView: propHo
 
             console.log("Adding marker to favorites from dashboard:", markerName)
 
-            const res = await fetch("http://localhost:8000/user/favorites", {
+            const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/user/favorites`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

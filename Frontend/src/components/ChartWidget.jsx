@@ -33,7 +33,7 @@ export default function ChartWidget({ biomarker, patientUid }) {
 
                 // Use normalized biomarker name for better matching
                 const normalizedBiomarker = normalizeBiomarkerName(biomarker);
-                const response = await fetch(`http://127.0.0.1:8000/api/draw_graph/${uid}/${encodeURIComponent(normalizedBiomarker)}`, {
+                const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/draw_graph/${uid}/${encodeURIComponent(normalizedBiomarker)}`, {
                     headers: {
                         Authorization: `Bearer ${token}`,
                     },
